@@ -1,0 +1,1118 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>库存管理小工具（手机网页版）</title>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --danger: #dc2626;
+      --success: #059669;
+      --warn: #d97706;
+      --shadow: 0 10px 30px rgba(0,0,0,.08);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; color: var(--text); background: var(--bg); font-size: 18px; }
+    body { padding: 16px; line-height: 1.6; }
+
+    .container { max-width: 1200px; margin: 0 auto; }
+    .hero {
+      background: linear-gradient(135deg, #2563eb, #4f46e5);
+      color: white;
+      border-radius: 24px;
+      padding: 22px;
+      box-shadow: var(--shadow);
+      margin-bottom: 16px;
+    }
+    .hero h1 { margin: 0 0 8px; font-size: 34px; }
+    .hero p { margin: 0; opacity: .92; line-height: 1.7; font-size: 19px; }
+
+    .grid { display: grid; gap: 16px; }
+    .grid.top { grid-template-columns: 1.1fr .9fr; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+    .card h2 {
+      margin: 0 0 14px;
+      font-size: 26px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .field { display: flex; flex-direction: column; gap: 8px; }
+    .field.full { grid-column: 1 / -1; }
+    label { font-size: 17px; color: var(--muted); }
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 12px;
+      padding: 13px 15px;
+      font-size: 18px;
+      outline: none;
+      transition: .18s ease;
+    }
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(37,99,235,.12);
+    }
+    textarea { min-height: 84px; resize: vertical; }
+
+    .actions, .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .actions { margin-top: 14px; }
+    button, .button {
+      border: 0;
+      border-radius: 12px;
+      padding: 13px 18px;
+      font-size: 17px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: .18s ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .primary { background: var(--primary); color: white; }
+    .primary:hover { background: var(--primary-dark); }
+    .secondary { background: #eef2ff; color: #3730a3; }
+    .secondary:hover { background: #e0e7ff; }
+    .ghost { background: #f3f4f6; color: #111827; }
+    .ghost:hover { background: #e5e7eb; }
+    .danger { background: #fee2e2; color: #991b1b; }
+    .danger:hover { background: #fecaca; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      background: linear-gradient(180deg, #fff, #fafafa);
+    }
+    .stat .label { font-size: 16px; color: var(--muted); margin-bottom: 8px; }
+    .stat .value { font-size: 30px; font-weight: 800; }
+    .stat .hint { font-size: 15px; color: var(--muted); margin-top: 6px; }
+
+    .toolbar {
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .toolbar-left, .toolbar-right {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .toolbar input, .toolbar select { min-width: 160px; }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fff;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1100px;
+    }
+    th, td {
+      padding: 13px 11px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      font-size: 17px;
+    }
+    th {
+      background: #f9fafb;
+      color: #374151;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    tr:hover td { background: #fafcff; }
+    .money.pos { color: var(--success); font-weight: 700; }
+    .money.neg { color: var(--danger); font-weight: 700; }
+    .tag {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 15px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-weight: 700;
+    }
+    .tag.warn { background: #fff7ed; color: var(--warn); }
+    .tag.gray { background: #f3f4f6; color: #4b5563; }
+
+    .mobile-list { display: none; gap: 12px; }
+    .mobile-item {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      background: white;
+    }
+    .mobile-item h3 { margin: 0 0 10px; font-size: 19px; }
+    .mobile-meta {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .mini {
+      background: #f9fafb;
+      border-radius: 12px;
+      padding: 10px;
+    }
+    .mini .k { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+    .mini .v { font-size: 15px; font-weight: 700; word-break: break-word; }
+    .empty {
+      text-align: center;
+      color: var(--muted);
+      padding: 22px;
+      border: 1px dashed var(--line);
+      border-radius: 16px;
+      background: #fff;
+    }
+    .footer-note {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .sync-status {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: #f9fafb;
+      color: #374151;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+    .sync-status.warn {
+      border-color: #fed7aa;
+      background: #fff7ed;
+      color: #9a3412;
+    }
+    .sync-status strong {
+      color: #111827;
+    }
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, .45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 50;
+    }
+    .modal-backdrop.show { display: flex; }
+    .modal {
+      width: 100%;
+      max-width: 520px;
+      background: white;
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      padding: 18px;
+      border: 1px solid var(--line);
+    }
+    .modal h3 { margin: 0 0 8px; font-size: 22px; }
+    .modal p { margin: 0 0 14px; color: var(--muted); line-height: 1.6; }
+
+    @media (max-width: 900px) {
+      .grid.top { grid-template-columns: 1fr; }
+      .form-grid, .stats { grid-template-columns: 1fr; }
+      .toolbar { flex-direction: column; align-items: stretch; }
+      .toolbar-left, .toolbar-right { width: 100%; }
+      .toolbar input, .toolbar select, .toolbar button, .toolbar .button { width: 100%; }
+      .table-wrap { display: none; }
+      .mobile-list { display: grid; }
+      .hero h1 { font-size: 28px; }
+      body { padding: 12px; }
+      .card { padding: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <section class="hero">
+      <h1>库存管理小工具（手机网页版）</h1>
+      <p>适合手机和电脑通过网页打开使用的小型库存记录工具。支持商品录入、登记卖出记录、总利润、日/月统计、低库存提醒、备份/恢复，以及导出 CSV。数据默认保存在当前设备当前浏览器里，不会自动跨设备同步。</p>
+    </section>
+
+    <section class="card" style="margin-bottom: 16px; border: 1px solid #bfdbfe; background: #eff6ff;">
+      <h2 style="font-size: 22px; margin-bottom: 10px;">手机使用说明</h2>
+      <div style="color:#1e3a8a; font-size:15px; line-height:1.8;">
+        <div>- 这个版本适合发布成网页后，用 iPhone / Android 浏览器打开。</div>
+        <div>- 备份 JSON：把当前设备里的数据导出成备份文件。</div>
+        <div>- 恢复 JSON：把另一台设备导出的备份文件导入到当前设备。</div>
+        <div>- 电脑和手机之间如果要接力使用，请先备份，再在另一台设备恢复。</div>
+      </div>
+    </section>
+
+    <section class="grid top">
+      <div class="card">
+        <h2 id="formTitle">新增商品</h2>
+        <form id="itemForm">
+          <div class="form-grid">
+            <div class="field">
+              <label for="name">商品名称</label>
+              <input id="name" required placeholder="例如：iPhone 15 Pro" />
+            </div>
+            <div class="field">
+              <label for="category">分类</label>
+              <input id="category" placeholder="例如：手机 / 饰品 / 美妆" />
+            </div>
+            <div class="field">
+              <label for="sku">编号 / SKU</label>
+              <input id="sku" placeholder="例如：A-001" />
+            </div>
+            <div class="field">
+              <label for="supplier">供货渠道</label>
+              <input id="supplier" placeholder="例如：深圳华强北" />
+            </div>
+            <div class="field">
+              <label for="costPrice">进价（单价）</label>
+              <input id="costPrice" type="number" min="0" step="0.01" placeholder="0" />
+            </div>
+            <div class="field">
+              <label for="marketPrice">市场价（单价）</label>
+              <input id="marketPrice" type="number" min="0" step="0.01" placeholder="0" />
+            </div>
+            <div class="field">
+              <label for="sellPrice">你的售价（单价）</label>
+              <input id="sellPrice" type="number" min="0" step="0.01" placeholder="0" />
+            </div>
+            <div class="field">
+              <label for="quantity">进货数量</label>
+              <input id="quantity" type="number" min="0" step="1" placeholder="0" />
+            </div>
+            <div class="field">
+              <label for="soldQuantity">已售数量</label>
+              <input id="soldQuantity" type="number" min="0" step="1" placeholder="0" />
+            </div>
+            <div class="field">
+              <label for="location">存放位置</label>
+              <input id="location" placeholder="例如：仓库 A / 家里柜子" />
+            </div>
+            <div class="field full">
+              <label for="note">备注</label>
+              <textarea id="note" placeholder="可写颜色、规格、购买日期、特殊情况等"></textarea>
+            </div>
+          </div>
+          <div class="actions">
+            <button type="submit" class="primary" id="submitBtn">保存商品</button>
+            <button type="button" class="ghost" id="resetBtn">清空表单</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>总览统计</h2>
+        <div class="stats" id="stats"></div>
+        <div id="lowStockAlert" style="margin-top:12px;"></div>
+        <div class="footer-note">
+          <div>说明：</div>
+          <div>- 预计总成本 = 进价 × 进货数量</div>
+          <div>- 剩余库存 = 进货数量 - 已售数量</div>
+          <div>- 已实现利润 = (售价 - 进价) × 已售数量</div>
+          <div>- 剩余库存价值 = 售价 × 剩余库存</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top: 16px;">
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <input id="searchInput" placeholder="搜索商品名 / 分类 / SKU / 备注" />
+          <select id="stockFilter">
+            <option value="all">全部库存状态</option>
+            <option value="inStock">只看有库存</option>
+            <option value="soldOut">只看已售空</option>
+            <option value="lowStock">只看低库存（≤ 3）</option>
+          </select>
+        </div>
+        <div id="syncStatus" class="sync-status" style="width:100%;">
+          当前商品 0 条｜卖出记录 0 条｜最近未备份 JSON
+        </div>
+        <div class="toolbar-right">
+          <button class="secondary" id="exportBtn">导出 CSV</button>
+          <button class="ghost" id="backupBtn">备份 JSON</button>
+          <button class="ghost" id="restoreBtn">恢复 JSON</button>
+          <input id="restoreFile" type="file" accept="application/json" style="display:none;" />
+          <button class="ghost" id="sampleBtn">导入示例数据</button>
+          <button class="danger" id="clearAllBtn">清空全部数据</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>商品</th>
+              <th>分类</th>
+              <th>SKU</th>
+              <th>进价</th>
+              <th>市场价</th>
+              <th>售价</th>
+              <th>进货数量</th>
+              <th>已售</th>
+              <th>剩余库存</th>
+              <th>总成本</th>
+              <th>已实现利润</th>
+              <th>利润率</th>
+              <th>备注</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+
+      <div id="mobileList" class="mobile-list"></div>
+      <div id="emptyState" class="empty" style="display:none; margin-top: 12px;">还没有商品数据。先在上面录入一条试试。</div>
+    </section>
+
+    <section class="grid top" style="margin-top: 16px;">
+      <div class="card">
+        <h2>日 / 月销售统计</h2>
+        <div class="stats" id="periodStats"></div>
+      </div>
+      <div class="card">
+        <h2>卖出记录（最近 20 条）</h2>
+        <div id="saleRecords" class="empty">暂无卖出记录。</div>
+      </div>
+    </section>
+  </div>
+
+  <div id="saleModal" class="modal-backdrop">
+    <div class="modal">
+      <h3>登记卖出</h3>
+      <p id="saleModalDesc">记录卖出数量后，已售数量会增加，剩余库存会减少，利润统计也会同步更新。</p>
+      <form id="saleForm">
+        <div class="form-grid">
+          <div class="field">
+            <label for="saleQuantity">本次卖出数量</label>
+            <input id="saleQuantity" type="number" min="1" step="1" placeholder="例如 1" required />
+          </div>
+          <div class="field">
+            <label for="salePrice">本次成交单价（默认当前售价）</label>
+            <input id="salePrice" type="number" min="0" step="0.01" placeholder="0" />
+          </div>
+          <div class="field full">
+            <label for="saleNote">卖出备注</label>
+            <textarea id="saleNote" placeholder="例如：熟客、线下成交、优惠了 10 元"></textarea>
+          </div>
+        </div>
+        <div class="actions">
+          <button type="submit" class="primary">确认登记卖出</button>
+          <button type="button" class="ghost" id="saleCancelBtn">取消</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'openclaw_inventory_tool_v1';
+    const SALES_KEY = 'openclaw_inventory_sales_v1';
+    const BACKUP_META_KEY = 'openclaw_inventory_backup_meta_v1';
+    const form = document.getElementById('itemForm');
+    const tableBody = document.getElementById('tableBody');
+    const mobileList = document.getElementById('mobileList');
+    const stats = document.getElementById('stats');
+    const emptyState = document.getElementById('emptyState');
+    const formTitle = document.getElementById('formTitle');
+    const submitBtn = document.getElementById('submitBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const searchInput = document.getElementById('searchInput');
+    const stockFilter = document.getElementById('stockFilter');
+    const exportBtn = document.getElementById('exportBtn');
+    const sampleBtn = document.getElementById('sampleBtn');
+    const backupBtn = document.getElementById('backupBtn');
+    const restoreBtn = document.getElementById('restoreBtn');
+    const restoreFile = document.getElementById('restoreFile');
+    const clearAllBtn = document.getElementById('clearAllBtn');
+    const syncStatus = document.getElementById('syncStatus');
+    const saleModal = document.getElementById('saleModal');
+    const saleForm = document.getElementById('saleForm');
+    const saleModalDesc = document.getElementById('saleModalDesc');
+    const saleCancelBtn = document.getElementById('saleCancelBtn');
+    const saleQuantityInput = document.getElementById('saleQuantity');
+    const salePriceInput = document.getElementById('salePrice');
+    const saleNoteInput = document.getElementById('saleNote');
+    const lowStockAlert = document.getElementById('lowStockAlert');
+    const periodStats = document.getElementById('periodStats');
+    const saleRecords = document.getElementById('saleRecords');
+
+    let items = loadItems();
+    let saleLogs = loadSales();
+    let editingId = null;
+    let saleItemId = null;
+
+    function toNumber(value) {
+      const n = Number(value);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function money(n) {
+      return '¥' + toNumber(n).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function percent(n) {
+      return toNumber(n).toLocaleString('zh-CN', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+    }
+
+    function escapeHtml(str = '') {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function calc(item) {
+      const costPrice = toNumber(item.costPrice);
+      const marketPrice = toNumber(item.marketPrice);
+      const sellPrice = toNumber(item.sellPrice);
+      const quantity = Math.max(0, Math.floor(toNumber(item.quantity)));
+      const soldQuantity = Math.max(0, Math.floor(toNumber(item.soldQuantity)));
+      const safeSold = Math.min(quantity, soldQuantity);
+      const remaining = Math.max(0, quantity - safeSold);
+      const totalCost = costPrice * quantity;
+      const realizedRevenue = sellPrice * safeSold;
+      const realizedProfit = (sellPrice - costPrice) * safeSold;
+      const potentialRevenue = sellPrice * remaining;
+      const marketValue = marketPrice * remaining;
+      const remainingCost = costPrice * remaining;
+      const profitMargin = costPrice > 0 ? ((sellPrice - costPrice) / costPrice) * 100 : 0;
+      return {
+        costPrice, marketPrice, sellPrice, quantity,
+        soldQuantity: safeSold,
+        remaining, totalCost, realizedRevenue,
+        realizedProfit, potentialRevenue, marketValue,
+        remainingCost, profitMargin
+      };
+    }
+
+    function loadItems() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      } catch {
+        return [];
+      }
+    }
+
+    function saveItems() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    }
+
+    
+    function loadSales() {
+      try {
+        return JSON.parse(localStorage.getItem(SALES_KEY) || '[]');
+      } catch {
+        return [];
+      }
+    }
+
+    function saveSales() {
+      localStorage.setItem(SALES_KEY, JSON.stringify(saleLogs));
+    }
+
+    function loadBackupMeta() {
+      try {
+        return JSON.parse(localStorage.getItem(BACKUP_META_KEY) || 'null');
+      } catch {
+        return null;
+      }
+    }
+
+    function saveBackupMeta(meta) {
+      localStorage.setItem(BACKUP_META_KEY, JSON.stringify(meta));
+    }
+
+    function getDataFingerprint() {
+      return JSON.stringify({ items, saleLogs });
+    }
+
+    function markDataChanged() {
+      const backupMeta = loadBackupMeta();
+      if (!backupMeta) return renderSyncStatus();
+      backupMeta.lastDataFingerprint = getDataFingerprint();
+      saveBackupMeta(backupMeta);
+      renderSyncStatus();
+    }
+
+    function renderSyncStatus() {
+      const backupMeta = loadBackupMeta();
+      const lastBackupText = backupMeta?.exportedAt
+        ? new Date(backupMeta.exportedAt).toLocaleString('zh-CN')
+        : '未备份 JSON';
+      const isBackedUp = backupMeta?.backupFingerprint && backupMeta.backupFingerprint === getDataFingerprint();
+      syncStatus.classList.toggle('warn', !!backupMeta && !isBackedUp);
+      const backupStateText = !backupMeta
+        ? '当前还没有做过 JSON 备份'
+        : isBackedUp
+          ? '当前数据已备份'
+          : '有未备份更改';
+      syncStatus.innerHTML = [
+        `<strong>当前商品：</strong>${items.length} 条`,
+        `<strong>卖出记录：</strong>${saleLogs.length} 条`,
+        `<strong>最近备份：</strong>${escapeHtml(lastBackupText)}`,
+        `<strong>状态：</strong>${escapeHtml(backupStateText)}`
+      ].join('｜');
+    }
+
+    function getTodayMonthRange() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = now.getMonth();
+      const dStart = new Date(y, m, now.getDate(), 0,0,0,0).getTime();
+      const dEnd = new Date(y, m, now.getDate(), 23,59,59,999).getTime();
+      const mStart = new Date(y, m, 1, 0,0,0,0).getTime();
+      const mEnd = new Date(y, m+1, 0, 23,59,59,999).getTime();
+      return {dStart,dEnd,mStart,mEnd};
+    }
+
+    function computePeriodStats() {
+      const {dStart,dEnd,mStart,mEnd} = getTodayMonthRange();
+      const dayLogs = saleLogs.filter(x => { const t = new Date(x.soldAt).getTime(); return t>=dStart && t<=dEnd; });
+      const monthLogs = saleLogs.filter(x => { const t = new Date(x.soldAt).getTime(); return t>=mStart && t<=mEnd; });
+      const sum = (arr, key) => arr.reduce((a,b)=>a+toNumber(b[key]),0);
+      return {
+        dayQty: sum(dayLogs,'quantity'),
+        dayRevenue: sum(dayLogs,'revenue'),
+        dayProfit: sum(dayLogs,'profit'),
+        monthQty: sum(monthLogs,'quantity'),
+        monthRevenue: sum(monthLogs,'revenue'),
+        monthProfit: sum(monthLogs,'profit')
+      };
+    }
+
+    function renderPeriodStats() {
+      const p = computePeriodStats();
+      const cards = [
+        ['今日卖出件数', p.dayQty, '按卖出记录统计'],
+        ['今日销售额', money(p.dayRevenue), '成交单价 × 数量'],
+        ['今日利润', money(p.dayProfit), '成交价 - 成本价'],
+        ['本月卖出件数', p.monthQty, '自然月统计'],
+        ['本月销售额', money(p.monthRevenue), '自然月累计'],
+        ['本月利润', money(p.monthProfit), '自然月累计']
+      ];
+      periodStats.innerHTML = cards.map(([label, value, hint]) => `
+        <div class="stat">
+          <div class="label">${label}</div>
+          <div class="value">${value}</div>
+          <div class="hint">${hint}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderSaleRecords() {
+      if (!saleLogs.length) {
+        saleRecords.className = 'empty';
+        saleRecords.textContent = '暂无卖出记录。';
+        return;
+      }
+      const rows = [...saleLogs].sort((a,b)=>new Date(b.soldAt)-new Date(a.soldAt)).slice(0,20);
+      saleRecords.className = '';
+      saleRecords.innerHTML = `
+        <div class="table-wrap">
+          <table style="min-width:720px;">
+            <thead>
+              <tr><th>时间</th><th>商品</th><th>数量</th><th>成交单价</th><th>销售额</th><th>利润</th><th>备注</th></tr>
+            </thead>
+            <tbody>
+              ${rows.map(r=>`<tr>
+                <td>${escapeHtml(new Date(r.soldAt).toLocaleString('zh-CN'))}</td>
+                <td>${escapeHtml(r.itemName || '-')}</td>
+                <td>${r.quantity}</td>
+                <td>${money(r.salePrice)}</td>
+                <td>${money(r.revenue)}</td>
+                <td class="money ${toNumber(r.profit)>=0?'pos':'neg'}">${money(r.profit)}</td>
+                <td>${escapeHtml(r.note || '-')}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    }
+
+    function renderLowStockAlert() {
+      const low = items
+        .map(i=>({item:i,c:calc(i)}))
+        .filter(x=>x.c.remaining>0 && x.c.remaining<=3)
+        .sort((a,b)=>a.c.remaining-b.c.remaining);
+      if (!low.length) {
+        lowStockAlert.innerHTML = '<span class="tag">库存状态良好</span>';
+        return;
+      }
+      lowStockAlert.innerHTML = `
+        <div style="border:1px solid #fed7aa;background:#fff7ed;border-radius:12px;padding:10px 12px;color:#9a3412;font-size:14px;">
+          <strong>低库存提醒：</strong>${low.map(x=>`${escapeHtml(x.item.name)}（剩 ${x.c.remaining}）`).join('、')}
+        </div>`;
+    }
+
+    function openSaleModal(id) {
+      const item = items.find(i => i.id === id);
+      if (!item) return;
+      const c = calc(item);
+      if (c.remaining <= 0) {
+        alert('这个商品已经没有剩余库存了。');
+        return;
+      }
+      saleItemId = id;
+      saleModalDesc.textContent = `商品：${item.name}｜当前剩余库存：${c.remaining}｜默认售价：${money(c.sellPrice)}`;
+      saleQuantityInput.value = '';
+      salePriceInput.value = c.sellPrice || '';
+      saleNoteInput.value = '';
+      saleModal.classList.add('show');
+      setTimeout(() => saleQuantityInput.focus(), 50);
+    }
+
+    function closeSaleModal() {
+      saleItemId = null;
+      saleForm.reset();
+      saleModal.classList.remove('show');
+    }
+
+    function resetForm() {
+      form.reset();
+      editingId = null;
+      formTitle.textContent = '新增商品';
+      submitBtn.textContent = '保存商品';
+    }
+
+    function getFormData() {
+      return {
+        id: editingId || Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+        name: document.getElementById('name').value.trim(),
+        category: document.getElementById('category').value.trim(),
+        sku: document.getElementById('sku').value.trim(),
+        supplier: document.getElementById('supplier').value.trim(),
+        costPrice: toNumber(document.getElementById('costPrice').value),
+        marketPrice: toNumber(document.getElementById('marketPrice').value),
+        sellPrice: toNumber(document.getElementById('sellPrice').value),
+        quantity: Math.max(0, Math.floor(toNumber(document.getElementById('quantity').value))),
+        soldQuantity: Math.max(0, Math.floor(toNumber(document.getElementById('soldQuantity').value))),
+        location: document.getElementById('location').value.trim(),
+        note: document.getElementById('note').value.trim(),
+        updatedAt: new Date().toISOString()
+      };
+    }
+
+    function fillForm(item) {
+      editingId = item.id;
+      formTitle.textContent = '编辑商品';
+      submitBtn.textContent = '更新商品';
+      document.getElementById('name').value = item.name || '';
+      document.getElementById('category').value = item.category || '';
+      document.getElementById('sku').value = item.sku || '';
+      document.getElementById('supplier').value = item.supplier || '';
+      document.getElementById('costPrice').value = item.costPrice ?? '';
+      document.getElementById('marketPrice').value = item.marketPrice ?? '';
+      document.getElementById('sellPrice').value = item.sellPrice ?? '';
+      document.getElementById('quantity').value = item.quantity ?? '';
+      document.getElementById('soldQuantity').value = item.soldQuantity ?? '';
+      document.getElementById('location').value = item.location || '';
+      document.getElementById('note').value = item.note || '';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function removeItem(id) {
+      const item = items.find(i => i.id === id);
+      if (!item) return;
+      if (!confirm(`确定删除商品「${item.name}」吗？`)) return;
+      items = items.filter(i => i.id !== id);
+      saveItems();
+      saveSales();
+      markDataChanged();
+      render();
+      if (editingId === id) resetForm();
+    }
+
+    function getFilteredItems() {
+      const keyword = searchInput.value.trim().toLowerCase();
+      const filter = stockFilter.value;
+      return items.filter(item => {
+        const c = calc(item);
+        const searchable = [item.name, item.category, item.sku, item.supplier, item.location, item.note].join(' ').toLowerCase();
+        const hitKeyword = !keyword || searchable.includes(keyword);
+        let hitFilter = true;
+        if (filter === 'inStock') hitFilter = c.remaining > 0;
+        if (filter === 'soldOut') hitFilter = c.remaining === 0;
+        if (filter === 'lowStock') hitFilter = c.remaining > 0 && c.remaining <= 3;
+        return hitKeyword && hitFilter;
+      }).sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+    }
+
+    function renderStats() {
+      const list = getFilteredItems();
+      const totalProducts = list.length;
+      const totalUnits = list.reduce((sum, item) => sum + calc(item).quantity, 0);
+      const soldUnits = list.reduce((sum, item) => sum + calc(item).soldQuantity, 0);
+      const remainingUnits = list.reduce((sum, item) => sum + calc(item).remaining, 0);
+      const totalCost = list.reduce((sum, item) => sum + calc(item).totalCost, 0);
+      const realizedProfit = list.reduce((sum, item) => sum + calc(item).realizedProfit, 0);
+      const estimatedTotalProfit = list.reduce((sum, item) => { const c = calc(item); return sum + ((c.sellPrice - c.costPrice) * c.quantity); }, 0);
+      const remainingMarketValue = list.reduce((sum, item) => sum + calc(item).marketValue, 0);
+      const remainingSaleValue = list.reduce((sum, item) => sum + calc(item).potentialRevenue, 0);
+
+      const cards = [
+        ['商品种类', totalProducts, `共录入 ${totalProducts} 种商品`],
+        ['进货总数量', totalUnits, `已售 ${soldUnits}，剩余 ${remainingUnits}`],
+        ['总进货成本', money(totalCost), '按所有录入商品统计'],
+        ['已实现利润', money(realizedProfit), '已售数量对应的利润'],
+        ['总利润（预计）', money(estimatedTotalProfit), '按全部进货数量估算'],
+        ['剩余库存按市场价', money(remainingMarketValue), '市场价 × 剩余库存'],
+        ['剩余库存按售价', money(remainingSaleValue), '售价 × 剩余库存']
+      ];
+
+      stats.innerHTML = cards.map(([label, value, hint]) => `
+        <div class="stat">
+          <div class="label">${label}</div>
+          <div class="value">${value}</div>
+          <div class="hint">${hint}</div>
+        </div>
+      `).join('');
+    }
+
+    function stockTag(remaining) {
+      if (remaining === 0) return '<span class="tag gray">已售空</span>';
+      if (remaining <= 3) return '<span class="tag warn">低库存</span>';
+      return '<span class="tag">有库存</span>';
+    }
+
+    function renderTable() {
+      const list = getFilteredItems();
+      emptyState.style.display = list.length ? 'none' : 'block';
+      tableBody.innerHTML = list.map(item => {
+        const c = calc(item);
+        return `
+          <tr>
+            <td>
+              <strong>${escapeHtml(item.name)}</strong><br>
+              <span style="color:#6b7280; font-size:14px;">${escapeHtml(item.supplier || '-')} · ${escapeHtml(item.location || '-')}</span>
+            </td>
+            <td>${escapeHtml(item.category || '-')}</td>
+            <td>${escapeHtml(item.sku || '-')}</td>
+            <td>${money(c.costPrice)}</td>
+            <td>${money(c.marketPrice)}</td>
+            <td>${money(c.sellPrice)}</td>
+            <td>${c.quantity}</td>
+            <td>${c.soldQuantity}</td>
+            <td>${c.remaining}<br>${stockTag(c.remaining)}</td>
+            <td>${money(c.totalCost)}</td>
+            <td class="money ${c.realizedProfit >= 0 ? 'pos' : 'neg'}">${money(c.realizedProfit)}</td>
+            <td>${percent(c.profitMargin)}</td>
+            <td>${escapeHtml(item.note || '-')}</td>
+            <td>
+              <div class="actions" style="margin-top:0;">
+                <button class="primary" onclick="sellItem('${item.id}')">登记卖出</button>
+                <button class="secondary" onclick="editItem('${item.id}')">编辑</button>
+                <button class="danger" onclick="deleteItem('${item.id}')">删除</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderMobile() {
+      const list = getFilteredItems();
+      mobileList.innerHTML = list.map(item => {
+        const c = calc(item);
+        return `
+          <div class="mobile-item">
+            <h3>${escapeHtml(item.name)}</h3>
+            <div style="margin-bottom:10px;">${stockTag(c.remaining)}</div>
+            <div class="mobile-meta">
+              <div class="mini"><div class="k">分类</div><div class="v">${escapeHtml(item.category || '-')}</div></div>
+              <div class="mini"><div class="k">SKU</div><div class="v">${escapeHtml(item.sku || '-')}</div></div>
+              <div class="mini"><div class="k">进价</div><div class="v">${money(c.costPrice)}</div></div>
+              <div class="mini"><div class="k">售价</div><div class="v">${money(c.sellPrice)}</div></div>
+              <div class="mini"><div class="k">进货数量</div><div class="v">${c.quantity}</div></div>
+              <div class="mini"><div class="k">已售 / 剩余</div><div class="v">${c.soldQuantity} / ${c.remaining}</div></div>
+              <div class="mini"><div class="k">总成本</div><div class="v">${money(c.totalCost)}</div></div>
+              <div class="mini"><div class="k">已实现利润</div><div class="v ${c.realizedProfit >= 0 ? 'money pos' : 'money neg'}">${money(c.realizedProfit)}</div></div>
+            </div>
+            <div style="font-size:14px; color:#6b7280; line-height:1.6; margin-bottom:10px;">
+              供货渠道：${escapeHtml(item.supplier || '-')}<br>
+              存放位置：${escapeHtml(item.location || '-')}<br>
+              备注：${escapeHtml(item.note || '-')}
+            </div>
+            <div class="actions">
+              <button class="primary" onclick="sellItem('${item.id}')">登记卖出</button>
+              <button class="secondary" onclick="editItem('${item.id}')">编辑</button>
+              <button class="danger" onclick="deleteItem('${item.id}')">删除</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function render() {
+      renderStats();
+      renderLowStockAlert();
+      renderPeriodStats();
+      renderSaleRecords();
+      renderTable();
+      renderMobile();
+      renderSyncStatus();
+    }
+
+    function exportCSV() {
+      if (!items.length) {
+        alert('当前没有数据可导出。');
+        return;
+      }
+      const rows = [[
+        '商品名称','分类','SKU','供货渠道','进价','市场价','售价','进货数量','已售数量','剩余库存','总成本','已实现利润','利润率','存放位置','备注','更新时间'
+      ]];
+      items.forEach(item => {
+        const c = calc(item);
+        rows.push([
+          item.name, item.category, item.sku, item.supplier,
+          c.costPrice, c.marketPrice, c.sellPrice,
+          c.quantity, c.soldQuantity, c.remaining,
+          c.totalCost, c.realizedProfit, c.profitMargin,
+          item.location, item.note, item.updatedAt || ''
+        ]);
+      });
+      const csv = '\uFEFF' + rows.map(row => row.map(value => {
+        const s = String(value ?? '');
+        return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      }).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '库存数据导出.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function loadSampleData() {
+      if (!confirm('导入示例数据会覆盖当前没有的数据演示思路。继续吗？')) return;
+      items = [
+        {
+          id: 'demo1', name: '蓝牙耳机', category: '数码配件', sku: 'BT-001', supplier: '华强北渠道A',
+          costPrice: 89, marketPrice: 159, sellPrice: 139, quantity: 20, soldQuantity: 8,
+          location: '货架 A1', note: '黑色款卖得更快', updatedAt: new Date().toISOString()
+        },
+        {
+          id: 'demo2', name: '保温杯', category: '日用品', sku: 'CUP-018', supplier: '义乌供货商',
+          costPrice: 22, marketPrice: 49, sellPrice: 39, quantity: 30, soldQuantity: 27,
+          location: '货架 B2', note: '剩 3 个，考虑补货', updatedAt: new Date().toISOString()
+        }
+      ];
+      saleLogs = [];
+      saveItems();
+      saveSales();
+      markDataChanged();
+      render();
+      resetForm();
+    }
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const data = getFormData();
+      if (!data.name) {
+        alert('请填写商品名称。');
+        return;
+      }
+      if (data.soldQuantity > data.quantity) {
+        alert('已售数量不能大于进货数量。');
+        return;
+      }
+      const index = items.findIndex(i => i.id === data.id);
+      if (index >= 0) items[index] = data;
+      else items.push(data);
+      saveItems();
+      markDataChanged();
+      render();
+      resetForm();
+    });
+
+    resetBtn.addEventListener('click', resetForm);
+    searchInput.addEventListener('input', render);
+    stockFilter.addEventListener('change', render);
+    exportBtn.addEventListener('click', exportCSV);
+    sampleBtn.addEventListener('click', loadSampleData);
+
+    function formatBackupFileName(date = new Date()) {
+      const pad = (n) => String(n).padStart(2, '0');
+      const y = date.getFullYear();
+      const m = pad(date.getMonth() + 1);
+      const d = pad(date.getDate());
+      const hh = pad(date.getHours());
+      const mm = pad(date.getMinutes());
+      const ss = pad(date.getSeconds());
+      return `库存备份-${y}${m}${d}-${hh}${mm}${ss}.json`;
+    }
+
+    backupBtn.addEventListener('click', () => {
+      const exportedAt = new Date().toISOString();
+      const payload = { version: 1, exportedAt, items, saleLogs };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = formatBackupFileName();
+      a.click();
+      URL.revokeObjectURL(url);
+      const fingerprint = getDataFingerprint();
+      saveBackupMeta({
+        exportedAt,
+        itemCount: items.length,
+        saleCount: saleLogs.length,
+        backupFingerprint: fingerprint,
+        lastDataFingerprint: fingerprint
+      });
+      renderSyncStatus();
+    });
+
+    restoreBtn.addEventListener('click', () => restoreFile.click());
+    restoreFile.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        if (!Array.isArray(data.items)) throw new Error('备份格式无效：缺少 items');
+        const importedSales = Array.isArray(data.saleLogs) ? data.saleLogs : [];
+        const exportedAtText = data.exportedAt
+          ? new Date(data.exportedAt).toLocaleString('zh-CN')
+          : '未知时间';
+        const previewMessage = [
+          '即将导入这个备份文件：',
+          `- 商品数量：${data.items.length} 条`,
+          `- 卖出记录：${importedSales.length} 条`,
+          `- 备份时间：${exportedAtText}`,
+          '',
+          '注意：导入后会覆盖当前浏览器里的库存数据。',
+          '建议你先点“备份 JSON”保留当前数据，再继续导入。',
+          '',
+          '确定继续恢复吗？'
+        ].join('\n');
+        if (!confirm(previewMessage)) return;
+        items = data.items;
+        saleLogs = importedSales;
+        saveItems();
+        saveSales();
+        const fingerprint = getDataFingerprint();
+        saveBackupMeta({
+          exportedAt: data.exportedAt || new Date().toISOString(),
+          itemCount: data.items.length,
+          saleCount: importedSales.length,
+          backupFingerprint: fingerprint,
+          lastDataFingerprint: fingerprint
+        });
+        render();
+        resetForm();
+        alert(`恢复成功：已导入 ${data.items.length} 条商品，${importedSales.length} 条卖出记录。`);
+      } catch (err) {
+        alert('恢复失败：' + (err?.message || '文件格式错误'));
+      } finally {
+        restoreFile.value = '';
+      }
+    });
+
+    saleCancelBtn.addEventListener('click', closeSaleModal);
+    saleModal.addEventListener('click', (e) => {
+      if (e.target === saleModal) closeSaleModal();
+    });
+    saleForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const item = items.find(i => i.id === saleItemId);
+      if (!item) return closeSaleModal();
+      const c = calc(item);
+      const saleQty = Math.max(1, Math.floor(toNumber(saleQuantityInput.value)));
+      const salePrice = toNumber(salePriceInput.value || item.sellPrice);
+      const saleNote = saleNoteInput.value.trim();
+      if (saleQty > c.remaining) {
+        alert(`卖出数量不能大于剩余库存（当前剩余 ${c.remaining}）。`);
+        return;
+      }
+      item.soldQuantity = toNumber(item.soldQuantity) + saleQty;
+      item.sellPrice = salePrice;
+      item.updatedAt = new Date().toISOString();
+      saleLogs.push({
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2,8),
+        itemId: item.id,
+        itemName: item.name,
+        quantity: saleQty,
+        salePrice: salePrice,
+        costPrice: toNumber(item.costPrice),
+        revenue: salePrice * saleQty,
+        profit: (salePrice - toNumber(item.costPrice)) * saleQty,
+        note: saleNote,
+        soldAt: new Date().toISOString()
+      });
+      if (saleNote) {
+        const oldNote = item.note ? item.note + '\n' : '';
+        item.note = `${oldNote}[卖出 ${saleQty} 件 @ ${salePrice}] ${saleNote}`;
+      }
+      saveItems();
+      saveSales();
+      markDataChanged();
+      render();
+      closeSaleModal();
+    });
+    clearAllBtn.addEventListener('click', () => {
+      if (!items.length) return alert('当前没有数据。');
+      if (!confirm('确定清空全部商品数据吗？此操作会清除当前浏览器里保存的库存记录。')) return;
+      items = [];
+      saleLogs = [];
+      saveItems();
+      saveSales();
+      markDataChanged();
+      render();
+      resetForm();
+    });
+
+    window.editItem = function(id) {
+      const item = items.find(i => i.id === id);
+      if (item) fillForm(item);
+    }
+
+    window.deleteItem = function(id) {
+      removeItem(id);
+    }
+
+    window.sellItem = function(id) {
+      openSaleModal(id);
+    }
+
+    render();
+  </script>
+</body>
+</html>
