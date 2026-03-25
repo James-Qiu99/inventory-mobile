@@ -5,6 +5,8 @@ const INVENTORY_PAGE_SIZE = 20;
 const INVENTORY_TABLE = 'items';
 
 const form = document.getElementById('itemForm');
+const tableBody = document.getElementById('tableBody');
+const mobileList = document.getElementById('mobileList');
 const inventoryList = document.getElementById('inventoryList');
 const stats = document.getElementById('stats');
 const emptyState = document.getElementById('emptyState');
@@ -531,6 +533,93 @@ function renderInventoryList() {
   updatePaginationControls();
 }
 
+function renderLegacyInventory() {
+  if (!tableBody && !mobileList) return;
+  const keyword = normalizeSearchTerm(searchInput.value);
+  const list = inventoryPageRows;
+
+  if (tableBody) {
+    tableBody.innerHTML = list.map((item) => {
+      const c = calc(item);
+      return `
+        <tr>
+          <td>
+            <strong>${escapeHtml(item.name)}</strong><br>
+            <span style="color:#6b7280; font-size:14px;">${escapeHtml(item.supplier || '-')} · ${escapeHtml(item.location || '-')}</span>
+          </td>
+          <td>${escapeHtml(item.category || '-')}</td>
+          <td>${escapeHtml(item.sku || '-')}</td>
+          <td>${money(c.costPrice)}</td>
+          <td>${money(c.marketPrice)}</td>
+          <td>${money(c.sellPrice)}</td>
+          <td>${c.quantity}</td>
+          <td>${c.soldQuantity}</td>
+          <td>${c.remaining}<br>${stockTag(c.remaining)}</td>
+          <td>${money(c.totalCost)}</td>
+          <td class="money ${c.realizedProfit >= 0 ? 'pos' : 'neg'}">${money(c.realizedProfit)}</td>
+          <td>${percent(c.profitMargin)}</td>
+          <td>${escapeHtml(item.note || '-')}</td>
+          <td>
+            <div class="actions" style="margin-top:0;">
+              <button class="primary" onclick="sellItem('${item.id}')">登记卖出</button>
+              <button class="secondary" onclick="editItem('${item.id}')">编辑</button>
+              <button class="danger" onclick="deleteItem('${item.id}')">删除</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  if (mobileList) {
+    mobileList.innerHTML = list.map((item) => {
+      const c = calc(item);
+      const lowClass = c.remaining > 0 && c.remaining <= 3 ? 'low' : '';
+      return `
+        <div class="mobile-item">
+          <div class="mobile-item-header">
+            <div>
+              <h3>${highlightKeyword(item.name, keyword)}</h3>
+              <div class="mobile-item-sub">${highlightKeyword(item.category || '未分类', keyword)} · ${highlightKeyword(item.sku || '无 SKU', keyword)}</div>
+            </div>
+            <div style="text-align:right;">
+              <div class="mobile-item-price">${money(c.sellPrice)}</div>
+              <div class="mobile-item-sub">当前售价</div>
+            </div>
+          </div>
+          <div class="mobile-stock-banner ${lowClass}">
+            <div>
+              <div class="mobile-item-sub">剩余库存</div>
+              <div class="big">${c.remaining}</div>
+            </div>
+            <div>${stockTag(c.remaining)}</div>
+          </div>
+          <div class="mobile-meta">
+            <div class="mini"><div class="k">分类</div><div class="v">${escapeHtml(item.category || '-')}</div></div>
+            <div class="mini"><div class="k">SKU</div><div class="v">${escapeHtml(item.sku || '-')}</div></div>
+            <div class="mini"><div class="k">进价</div><div class="v">${money(c.costPrice)}</div></div>
+            <div class="mini"><div class="k">售价</div><div class="v">${money(c.sellPrice)}</div></div>
+            <div class="mini"><div class="k">进货数量</div><div class="v">${c.quantity}</div></div>
+            <div class="mini"><div class="k">已售 / 剩余</div><div class="v">${c.soldQuantity} / ${c.remaining}</div></div>
+            <div class="mini"><div class="k">总成本</div><div class="v">${money(c.totalCost)}</div></div>
+            <div class="mini"><div class="k">已实现利润</div><div class="v ${c.realizedProfit >= 0 ? 'money pos' : 'money neg'}">${money(c.realizedProfit)}</div></div>
+          </div>
+          <div style="font-size:14px; color:#6b7280; line-height:1.6; margin-bottom:10px;">
+            供货渠道：${highlightKeyword(item.supplier || '-', keyword)}<br>
+            存放位置：${highlightKeyword(item.location || '-', keyword)}<br>
+            备注：${highlightKeyword(item.note || '-', keyword)}
+          </div>
+          <div class="actions">
+            <button class="primary" onclick="sellItem('${item.id}')">登记卖出</button>
+            <button class="secondary" onclick="editItem('${item.id}')">编辑</button>
+            <button class="danger" onclick="deleteItem('${item.id}')">删除</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+}
+
 function render() {
   updateSearchClearButton();
   renderSearchMeta();
@@ -540,6 +629,7 @@ function render() {
   renderPeriodStats();
   renderSaleRecords();
   renderInventoryList();
+  renderLegacyInventory();
 }
 
 function renderSaleRecords() {
