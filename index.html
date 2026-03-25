@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>库存管理小工具（手机网页版）</title>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --danger: #dc2626;
+      --success: #059669;
+      --warn: #d97706;
+      --shadow: 0 10px 30px rgba(0,0,0,.08);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; color: var(--text); background: var(--bg); font-size: 18px; }
+    body { padding: 16px; line-height: 1.6; }
+
+    .container { max-width: 1200px; margin: 0 auto; }
+    .hero {
+      background: linear-gradient(135deg, #2563eb, #4f46e5);
+      color: white;
+      border-radius: 24px;
+      padding: 22px;
+      box-shadow: var(--shadow);
+      margin-bottom: 16px;
+    }
+    .hero h1 { margin: 0 0 8px; font-size: 34px; }
+    .hero p { margin: 0; opacity: .92; line-height: 1.7; font-size: 19px; }
+
+    .grid { display: grid; gap: 16px; }
+    .grid.top { grid-template-columns: 1.1fr .9fr; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+    .card h2 {
+      margin: 0 0 14px;
+      font-size: 26px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .field { display: flex; flex-direction: column; gap: 8px; }
+    .field.full { grid-column: 1 / -1; }
+    label { font-size: 17px; color: var(--muted); }
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 12px;
+      padding: 13px 15px;
+      font-size: 18px;
+      outline: none;
+      transition: .18s ease;
+    }
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(37,99,235,.12);
+    }
+    textarea { min-height: 84px; resize: vertical; }
+
+    .actions, .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .actions { margin-top: 14px; }
+    button, .button {
+      border: 0;
+      border-radius: 12px;
+      padding: 13px 18px;
+      font-size: 17px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: .18s ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .primary { background: var(--primary); color: white; }
+    .primary:hover { background: var(--primary-dark); }
+    .secondary { background: #eef2ff; color: #3730a3; }
+    .secondary:hover { background: #e0e7ff; }
+    .ghost { background: #f3f4f6; color: #111827; }
+    .ghost:hover { background: #e5e7eb; }
+    .danger { background: #fee2e2; color: #991b1b; }
+    .danger:hover { background: #fecaca; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      background: linear-gradient(180deg, #fff, #fafafa);
+    }
+    .stat .label { font-size: 16px; color: var(--muted); margin-bottom: 8px; }
+    .stat .value { font-size: 30px; font-weight: 800; }
+    .stat .hint { font-size: 15px; color: var(--muted); margin-top: 6px; }
+
+    .toolbar {
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .toolbar-left, .toolbar-right {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .toolbar input, .toolbar select { min-width: 160px; }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fff;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1100px;
+    }
+    th, td {
+      padding: 13px 11px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      font-size: 17px;
+    }
+    th {
+      background: #f9fafb;
+      color: #374151;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    tr:hover td { background: #fafcff; }
+    .money.pos { color: var(--success); font-weight: 700; }
+    .money.neg { color: var(--danger); font-weight: 700; }
+    .tag {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 15px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-weight: 700;
+    }
+    .tag.warn { background: #fff7ed; color: var(--warn); }
+    .tag.gray { background: #f3f4f6; color: #4b5563; }
+
+    .mobile-list { display: none; gap: 12px; }
+    .mobile-item {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      background: white;
+    }
+    .mobile-item h3 { margin: 0 0 10px; font-size: 19px; }
+    .mobile-meta {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .mini {
+      background: #f9fafb;
+      border-radius: 12px;
+      padding: 10px;
+    }
+    .mini .k { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+    .mini .v { font-size: 15px; font-weight: 700; word-break: break-word; }
+    .empty {
+      text-align: center;
+      color: var(--muted);
+      padding: 22px;
+      border: 1px dashed var(--line);
+      border-radius: 16px;
+      background: #fff;
+    }
+    .footer-note {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .sync-status {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: #f9fafb;
+      color: #374151;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+    .sync-status.warn {
+      border-color: #fed7aa;
+      background: #fff7ed;
+      color: #9a3412;
+    }
+    .sync-status strong {
+      color: #111827;
+    }
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, .45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 50;
+    }
+    .modal-backdrop.show { display: flex; }
+    .modal {
+      width: 100%;
+      max-width: 520px;
+      background: white;
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      padding: 18px;
+      border: 1px solid var(--line);
+    }
+    .modal h3 { margin: 0 0 8px; font-size: 22px; }
+    .modal p { margin: 0 0 14px; color: var(--muted); line-height: 1.6; }
+
+    @media (max-width: 900px) {
+      .grid.top { grid-template-columns: 1fr; }
+      .form-grid, .stats { grid-template-columns: 1fr; }
+      .toolbar { flex-direction: column; align-items: stretch; }
+      .toolbar-left, .toolbar-right { width: 100%; }
+      .toolbar input, .toolbar select, .toolbar button, .toolbar .button { width: 100%; }
+      .table-wrap { display: none; }
+      .mobile-list { display: grid; }
+      .hero h1 { font-size: 28px; }
+      body { padding: 12px; }
+      .card { padding: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <section class="hero">
+      <h1>库存管理小工具（手机网页版）</h1>
+      <p>适合手机和电脑通过网页打开使用的小型库存记录工具。支持商品录入、登记卖出记录、总利润、日/月统计、低库存提醒、备份/恢复，以及导出 CSV。数据默认保存在当前设备当前浏览器里，不会自动跨设备同步。</p>
+    </section>
+
+    <section class="card" style="margin-bottom: 16px; border: 1px solid #bfdbfe; background: #eff6ff;">
+      <h2 style="font-size: 22px; margin-bottom: 10px;">手机使用说明</h2>
+      <div style="color:#1e3a8a; font-size:15px; line-height:1.8;">
+        <div>- 这个版本适合发布成网页后，用 iPhone / Android 浏览器打开。</div>
+        <div>- 备份 JSON：把当前设备里的数据导出成备份文件。</div>
+        <div>- 恢复 JSON：把另一台设备导出的备份文件导入到当前设备。</div>
+        <div>- 电脑和手机之间如果要接力使用，请先备份，再在另一台设备恢复。</div>
+      </div>
+    </section>
+
+    <section class="grid top">
+      <div class="card">
+        <h2 id="formTitle">新增商品</h2>
+        <form id="itemForm">
+          <div class="form-grid">
+            <div class="field">
+              <label for="name">商品名称</label>
+              <input id="name" required placeholder="例如：iPhone 15 Pro" />
+            </div>
+            <div class="field">
+              <label for="category">分类</label>
+              <input id="category" placeholder="例如：手机 / 饰品 / 美妆" />
+            </div>
+            <div class="field">
+              <label for="sku">编号 / SKU</label>
+              <input id="sku" placeholder="例如：A-001" />
+            </div>
+            <div class="field">
+              <label for="supplier">供货渠道</label>
+              <input id="supplier" placeholder="例如：深圳华强北" />
+            </div>
+            <div class="field">
+              <label for="costPrice">进价（单价）</label>
+              <input id="costPrice" type="number" min="0" step="0.01" placeholder="0" />
+            </div>
+            <div class="field">
+              <label for="marketPrice">市场价（单价）</label>
+              <input id="marketPrice" type="number" min="0" step="0.01" placeholder="0" />
+            </div>
+            <div class="field">
+              <label for="sellPrice">你的售价（单价）</label>
+              <input id="sellPrice" type="number" min="0" step="0.01" placeholder="0" />
+            </div>
+            <div class="field">
+              <label for="quantity">进货数量</label>
+              <input id="quantity" type="number" min="0" step="1" placeholder="0" />
+            </div>
+            <div class="field">
+              <label for="soldQuantity">已售数量</label>
+              <input id="soldQuantity" type="number" min="0" step="1" placeholder="0" />
+            </div>
+            <div class="field">
+              <label for="location">存放位置</label>
+              <input id="location" placeholder="例如：仓库 A / 家里柜子" />
+            </div>
+            <div class="field full">
+              <label for="note">备注</label>
+              <textarea id="note" placeholder="可写颜色、规格、购买日期、特殊情况等"></textarea>
+            </div>
+          </div>
+          <div class="actions">
+            <button type="submit" class="primary" id="submitBtn">保存商品</button>
+            <button type="button" class="ghost" id="resetBtn">清空表单</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>总览统计</h2>
+        <div class="stats" id="stats"></div>
+        <div id="lowStockAlert" style="margin-top:12px;"></div>
+        <div class="footer-note">
+          <div>说明：</div>
+          <div>- 预计总成本 = 进价 × 进货数量</div>
+          <div>- 剩余库存 = 进货数量 - 已售数量</div>
+          <div>- 已实现利润 = (售价 - 进价) × 已售数量</div>
+          <div>- 剩余库存价值 = 售价 × 剩余库存</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top: 16px;">
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <input id="searchInput" placeholder="搜索商品名 / 分类 / SKU / 备注" />
+          <select id="stockFilter">
+            <option value="all">全部库存状态</option>
+            <option value="inStock">只看有库存</option>
+            <option value="soldOut">只看已售空</option>
+            <option value="lowStock">只看低库存（≤ 3）</option>
+          </select>
+        </div>
+        <div id="syncStatus" class="sync-status" style="width:100%;">
+          当前商品 0 条｜卖出记录 0 条｜最近未备份 JSON
+        </div>
+        <div class="toolbar-right">
+          <button class="secondary" id="exportBtn">导出 CSV</button>
+          <button class="ghost" id="backupBtn">备份 JSON</button>
+          <button class="ghost" id="restoreBtn">恢复 JSON</button>
+          <input id="restoreFile" type="file" accept="application/json" style="display:none;" />
+          <button class="ghost" id="sampleBtn">导入示例数据</button>
+          <button class="danger" id="clearAllBtn">清空全部数据</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>商品</th>
+              <th>分类</th>
+              <th>SKU</th>
+              <th>进价</th>
+              <th>市场价</th>
+              <th>售价</th>
+              <th>进货数量</th>
+              <th>已售</th>
+              <th>剩余库存</th>
+              <th>总成本</th>
+              <th>已实现利润</th>
+              <th>利润率</th>
+              <th>备注</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+
+      <div id="mobileList" class="mobile-list"></div>
+      <div id="emptyState" class="empty" style="display:none; margin-top: 12px;">还没有商品数据。先在上面录入一条试试。</div>
+    </section>
+
+    <section class="grid top" style="margin-top: 16px;">
+      <div class="card">
+        <h2>日 / 月销售统计</h2>
+        <div class="stats" id="periodStats"></div>
+      </div>
+      <div class="card">
+        <h2>卖出记录（最近 20 条）</h2>
+        <div id="saleRecords" class="empty">暂无卖出记录。</div>
+      </div>
+    </section>
+  </div>
+
+  <div id="saleModal" class="modal-backdrop">
+    <div class="modal">
+      <h3>登记卖出</h3>
+      <p id="saleModalDesc">记录卖出数量后，已售数量会增加，剩余库存会减少，利润统计也会同步更新。</p>
+      <form id="saleForm">
+        <div class="form-grid">
+          <div class="field">
+            <label for="saleQuantity">本次卖出数量</label>
+            <input id="saleQuantity" type="number" min="1" step="1" placeholder="例如 1" required />
+          </div>
+          <div class="field">
+            <label for="salePrice">本次成交单价（默认当前售价）</label>
+            <input id="salePrice" type="number" min="0" step="0.01" placeholder="0" />
+          </div>
+          <div class="field full">
+            <label for="saleNote">卖出备注</label>
+            <textarea id="saleNote" placeholder="例如：熟客、线下成交、优惠了 10 元"></textarea>
+          </div>
+        </div>
+        <div class="actions">
+          <button type="submit" class="primary">确认登记卖出</button>
+          <button type="button" class="ghost" id="saleCancelBtn">取消</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./supabase-config.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
