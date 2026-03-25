@@ -10,6 +10,9 @@ const emptyState = document.getElementById('emptyState');
 const formTitle = document.getElementById('formTitle');
 const submitBtn = document.getElementById('submitBtn');
 const resetBtn = document.getElementById('resetBtn');
+const saveAndNextBtn = document.getElementById('saveAndNextBtn');
+const quickEntryMode = document.getElementById('quickEntryMode');
+const extraFieldsBlock = document.getElementById('extraFieldsBlock');
 const searchInput = document.getElementById('searchInput');
 const stockFilter = document.getElementById('stockFilter');
 const sortFilter = document.getElementById('sortFilter');
@@ -34,6 +37,7 @@ const quickAddBtn = document.getElementById('quickAddBtn');
 const quickListBtn = document.getElementById('quickListBtn');
 const quickSalesBtn = document.getElementById('quickSalesBtn');
 const categoryChips = [...document.querySelectorAll('.category-chip')];
+const qtyChips = [...document.querySelectorAll('.qty-chip')];
 
 function scrollToSection(id) {
   const el = document.getElementById(id);
@@ -47,6 +51,7 @@ let saleLogs = [];
 let editingId = null;
 let saleItemId = null;
 let loading = false;
+let keepFormValuesForNext = false;
 
 function toNumber(value) {
   const n = Number(value);
@@ -240,12 +245,30 @@ function setActiveCategoryChip(value = '') {
   categoryChips.forEach((chip) => chip.classList.toggle('active', chip.dataset.category === value));
 }
 
+function applyQuickEntryMode() {
+  if (!quickEntryMode || !extraFieldsBlock) return;
+  if (quickEntryMode.checked) extraFieldsBlock.removeAttribute('open');
+}
+
 function resetForm() {
+  const previousCategory = document.getElementById('category').value;
+  const previousLocation = document.getElementById('location').value;
   form.reset();
   editingId = null;
   formTitle.textContent = '新增商品';
   submitBtn.textContent = '保存商品';
-  setActiveCategoryChip('');
+
+  if (keepFormValuesForNext) {
+    document.getElementById('category').value = previousCategory || '';
+    document.getElementById('location').value = previousLocation || '';
+    setActiveCategoryChip(previousCategory || '');
+    keepFormValuesForNext = false;
+    document.getElementById('name').focus();
+  } else {
+    setActiveCategoryChip('');
+  }
+
+  applyQuickEntryMode();
 }
 
 function getFormData() {
@@ -301,7 +324,8 @@ async function removeItem(id) {
     return;
   }
   if (editingId === id) resetForm();
-  await fetchAllData();
+  await applyQuickEntryMode();
+fetchAllData();
 }
 
 function getFilteredItems() {
@@ -523,7 +547,8 @@ async function loadSampleData() {
     alert('导入示例数据失败：' + error.message);
     return;
   }
-  await fetchAllData();
+  await applyQuickEntryMode();
+fetchAllData();
   resetForm();
 }
 
@@ -547,11 +572,14 @@ form.addEventListener('submit', async (e) => {
     alert((editingId ? '更新' : '保存') + '失败：' + error.message);
     return;
   }
-  await fetchAllData();
+  await applyQuickEntryMode();
+fetchAllData();
   resetForm();
 });
 
-resetBtn.addEventListener('click', resetForm);
+resetBtn.addEventListener('click', () => { keepFormValuesForNext = false; resetForm(); });
+if (saveAndNextBtn) saveAndNextBtn.addEventListener('click', () => { keepFormValuesForNext = true; form.requestSubmit(); });
+if (quickEntryMode) quickEntryMode.addEventListener('change', applyQuickEntryMode);
 searchInput.addEventListener('input', render);
 stockFilter.addEventListener('change', render);
 if (sortFilter) sortFilter.addEventListener('change', render);
@@ -614,7 +642,8 @@ restoreFile.addEventListener('change', async (e) => {
       if (insertSalesError) throw insertSalesError;
     }
 
-    await fetchAllData();
+    await applyQuickEntryMode();
+fetchAllData();
     resetForm();
     alert(`恢复成功：已导入 ${data.items.length} 条商品，${importedSales.length} 条卖出记录。`);
   } catch (err) {
@@ -674,7 +703,8 @@ saleForm.addEventListener('submit', async (e) => {
     return;
   }
 
-  await fetchAllData();
+  await applyQuickEntryMode();
+fetchAllData();
   closeSaleModal();
 });
 
@@ -685,7 +715,8 @@ clearAllBtn.addEventListener('click', async () => {
   if (delSalesError) return alert('清空卖出记录失败：' + delSalesError.message);
   const { error: delItemsError } = await supabaseClient.from('items').delete().neq('id', '');
   if (delItemsError) return alert('清空商品失败：' + delItemsError.message);
-  await fetchAllData();
+  await applyQuickEntryMode();
+fetchAllData();
   resetForm();
 });
 
@@ -710,8 +741,15 @@ categoryChips.forEach((chip) => {
   });
 });
 
+qtyChips.forEach((chip) => {
+  chip.addEventListener('click', () => {
+    saleQuantityInput.value = chip.dataset.qty || '1';
+  });
+});
+
 if (quickAddBtn) quickAddBtn.addEventListener('click', () => scrollToSection('formSection'));
 if (quickListBtn) quickListBtn.addEventListener('click', () => scrollToSection('listSection'));
 if (quickSalesBtn) quickSalesBtn.addEventListener('click', () => scrollToSection('salesSection'));
 
+applyQuickEntryMode();
 fetchAllData();

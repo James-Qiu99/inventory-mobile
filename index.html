@@ -254,6 +254,8 @@
     .modal h3 { margin: 0 0 8px; font-size: 22px; }
     .modal p { margin: 0 0 14px; color: var(--muted); line-height: 1.6; }
     .sale-primary-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .sale-qty-chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+    .qty-chip { background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; border-radius:999px; padding:10px 12px; font-size:14px; font-weight:700; }
     .section-anchor { scroll-margin-top: 24px; }
     .quick-actions {
       display: none;
@@ -319,6 +321,7 @@
     .quick-category-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; margin-bottom:12px; }
     .category-chip { background:#eef2ff; color:#3730a3; border:1px solid #c7d2fe; border-radius:999px; padding:10px 14px; font-size:14px; font-weight:700; }
     .category-chip.active { background:#2563eb; color:#fff; border-color:#2563eb; }
+    .quick-entry-switch { margin-top:12px; padding:12px; border-radius:14px; background:#f8fafc; border:1px solid #e2e8f0; }
     .form-steps { margin-top:12px; border:1px solid var(--line); border-radius:16px; padding:12px; background:#fcfcfd; }
     .form-steps summary { cursor:pointer; font-weight:700; color:#111827; }
 
@@ -342,6 +345,8 @@
       .quick-actions { display: block; }
       .actions button, .actions .button { flex: 1 1 calc(50% - 10px); }
       .modal { padding: 16px; border-radius: 18px; }
+      .qty-chip { flex: 1 1 calc(50% - 8px); justify-content: center; }
+      #saveAndNextBtn { width: 100%; }
     }
   </style>
 </head>
@@ -379,6 +384,13 @@
       <div class="card section-anchor" id="formSection">
         <h2 id="formTitle">新增商品</h2>
         <div class="compact-note">建议在 iPhone 上优先填写：商品名称、售价、进货数量；其他字段可以后补。</div>
+        <div class="quick-entry-switch">
+          <label style="display:flex;align-items:center;gap:8px;color:#111827;font-weight:700;">
+            <input type="checkbox" id="quickEntryMode" checked style="width:auto;transform:scale(1.1);" />
+            快速录入模式
+          </label>
+          <div class="compact-note">开启后，更适合连续在 iPhone 上快速录货。</div>
+        </div>
         <div class="quick-category-row" id="quickCategoryRow">
           <button type="button" class="category-chip" data-category="手机">手机</button>
           <button type="button" class="category-chip" data-category="数码配件">数码配件</button>
@@ -387,7 +399,7 @@
           <button type="button" class="category-chip" data-category="日用品">日用品</button>
           <button type="button" class="category-chip" data-category="其他">其他</button>
         </div>
-        <details class="form-steps" open>
+        <details class="form-steps" open id="primaryFieldsBlock">
           <summary>第一步：先填核心字段</summary>
         <form id="itemForm">
           <div class="form-grid">
@@ -428,7 +440,7 @@
               <input id="soldQuantity" type="number" min="0" step="1" placeholder="0" />
             </div>
             </details>
-        <details class="form-steps">
+        <details class="form-steps" id="extraFieldsBlock">
           <summary>第二步：补充更多信息（可选）</summary>
           <div class="form-grid" style="margin-top:12px;">
             <div class="field">
@@ -444,8 +456,10 @@
         </details>
           <div class="actions">
             <button type="submit" class="primary" id="submitBtn">保存商品</button>
+            <button type="button" class="secondary" id="saveAndNextBtn">保存并继续录入</button>
             <button type="button" class="ghost" id="resetBtn">清空表单</button>
           </div>
+          <div class="compact-note">连续录入时可用“保存并继续录入”，会保留分类等常用值。</div>
         </form>
       </div>
 
@@ -552,6 +566,12 @@
           <div class="field">
             <label for="saleQuantity">本次卖出数量</label>
             <input id="saleQuantity" type="number" min="1" step="1" placeholder="例如 1" required />
+            <div class="sale-qty-chips">
+              <button type="button" class="qty-chip" data-qty="1">卖 1 件</button>
+              <button type="button" class="qty-chip" data-qty="2">卖 2 件</button>
+              <button type="button" class="qty-chip" data-qty="3">卖 3 件</button>
+              <button type="button" class="qty-chip" data-qty="5">卖 5 件</button>
+            </div>
           </div>
           <div class="field">
             <label for="salePrice">本次成交单价（默认当前售价）</label>
