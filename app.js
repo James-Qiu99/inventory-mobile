@@ -276,6 +276,11 @@ function updatePaginationControls() {
   if (nextPageBtn) nextPageBtn.disabled = loading || inventoryPage >= totalPages || totalPages === 0;
 }
 
+function updateSearchClearButton() {
+  if (!clearSearchBtn || !searchInput) return;
+  clearSearchBtn.classList.toggle('show', !!searchInput.value.trim());
+}
+
 function renderSearchMeta() {
   if (!searchResultMeta) return;
   const keyword = normalizeSearchTerm(searchInput.value);
