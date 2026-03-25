@@ -74,17 +74,19 @@
     label { font-size: 17px; color: var(--muted); }
     input, textarea, select {
       width: 100%;
-      border: 1px solid var(--line);
-      background: #fff;
-      border-radius: 12px;
-      padding: 13px 15px;
+      border: 1px solid rgba(17,24,39,.08);
+      background: rgba(255,255,255,.92);
+      border-radius: 16px;
+      padding: 14px 16px;
       font-size: 18px;
       outline: none;
       transition: .18s ease;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.5);
     }
     input:focus, textarea:focus, select:focus {
-      border-color: var(--primary);
-      box-shadow: 0 0 0 4px rgba(37,99,235,.12);
+      border-color: rgba(10,132,255,.55);
+      box-shadow: 0 0 0 4px rgba(10,132,255,.12);
+      background: #fff;
     }
     textarea { min-height: 84px; resize: vertical; }
 
@@ -97,10 +99,10 @@
     .actions { margin-top: 14px; }
     button, .button {
       border: 0;
-      border-radius: 12px;
+      border-radius: 16px;
       padding: 13px 18px;
       font-size: 17px;
-      font-weight: 600;
+      font-weight: 700;
       cursor: pointer;
       transition: .18s ease;
       text-decoration: none;
@@ -108,15 +110,16 @@
       align-items: center;
       justify-content: center;
       gap: 6px;
+      box-shadow: 0 8px 18px rgba(15,23,42,.06);
     }
-    .primary { background: var(--primary); color: white; }
-    .primary:hover { background: var(--primary-dark); }
-    .secondary { background: #eef2ff; color: #3730a3; }
-    .secondary:hover { background: #e0e7ff; }
-    .ghost { background: #f3f4f6; color: #111827; }
-    .ghost:hover { background: #e5e7eb; }
-    .danger { background: #fee2e2; color: #991b1b; }
-    .danger:hover { background: #fecaca; }
+    .primary { background: linear-gradient(180deg, #2491ff, #0a84ff); color: white; }
+    .primary:hover { background: linear-gradient(180deg, #1f88f2, #0077e6); }
+    .secondary { background: rgba(10,132,255,.10); color: #0a84ff; }
+    .secondary:hover { background: rgba(10,132,255,.16); }
+    .ghost { background: rgba(17,24,39,.05); color: #111827; }
+    .ghost:hover { background: rgba(17,24,39,.08); }
+    .danger { background: rgba(220,38,38,.10); color: #b91c1c; }
+    .danger:hover { background: rgba(220,38,38,.16); }
 
     .stats {
       display: grid;
@@ -267,23 +270,27 @@
     .modal-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(15, 23, 42, .45);
+      background: rgba(15, 23, 42, .32);
       display: none;
-      align-items: center;
+      align-items: flex-end;
       justify-content: center;
-      padding: 16px;
+      padding: 0;
       z-index: 50;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
     }
     .modal-backdrop.show { display: flex; }
     .modal {
       width: 100%;
       max-width: 560px;
-      background: white;
-      border-radius: 24px;
+      background: rgba(255,255,255,.96);
+      border-radius: 24px 24px 0 0;
       box-shadow: var(--shadow);
-      padding: 20px;
+      padding: 18px 18px 26px;
       border: 1px solid var(--line);
+      border-bottom: 0;
     }
+    .modal::before { content:""; display:block; width:42px; height:5px; border-radius:999px; background:rgba(107,114,128,.28); margin:0 auto 12px; }
     .modal h3 { margin: 0 0 8px; font-size: 22px; }
     .modal p { margin: 0 0 14px; color: var(--muted); line-height: 1.6; }
     .sale-primary-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
@@ -304,17 +311,18 @@
       grid-template-columns: 1.25fr 1fr 1fr;
       gap: 10px;
       padding: 10px;
-      background: rgba(255,255,255,.94);
-      border: 1px solid rgba(229,231,235,.9);
-      border-radius: 18px;
-      box-shadow: 0 12px 30px rgba(15, 23, 42, .12);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
+      background: rgba(255,255,255,.88);
+      border: 1px solid rgba(17,24,39,.06);
+      border-radius: 22px;
+      box-shadow: 0 16px 34px rgba(15, 23, 42, .10);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
     }
     .quick-actions button {
-      min-height: 52px;
-      border-radius: 14px;
+      min-height: 54px;
+      border-radius: 18px;
       font-size: 16px;
+      font-weight: 700;
     }
     .hero-badges {
       display: flex;
@@ -394,8 +402,8 @@
       .quick-actions { display: block; }
       .actions button, .actions .button { flex: 1 1 calc(50% - 10px); }
       input, textarea, select, button { font-size: 16px; }
-      input, textarea, select { min-height: 50px; }
-      .modal { padding: 16px; border-radius: 18px; }
+      input, textarea, select { min-height: 52px; }
+      .modal { padding: 16px 16px 24px; border-radius: 22px 22px 0 0; }
       .qty-chip { flex: 1 1 calc(50% - 8px); justify-content: center; }
       #saveAndNextBtn { width: 100%; }
     }
