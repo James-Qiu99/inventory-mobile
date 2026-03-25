@@ -46,10 +46,11 @@ const categoryChips = [...document.querySelectorAll('.category-chip')];
 const qtyChips = [...document.querySelectorAll('.qty-chip')];
 const entryReadyBanner = document.getElementById('entryReadyBanner');
 
-function scrollToSection(id) {
+function scrollToSection(id, offset = 0) {
   const el = document.getElementById(id);
   if (!el) return;
-  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const top = el.getBoundingClientRect().top + window.scrollY - offset;
+  window.scrollTo({ top, behavior: 'smooth' });
 }
 
 function setQuickActionsVisibilityByInput(active) {
@@ -686,7 +687,7 @@ searchInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
     e.preventDefault();
     render();
-    scrollToSection('listSection');
+    scrollToSection('listSection', 96);
     searchInput.blur();
   }
 });
@@ -862,6 +863,7 @@ if (quickListBtn) quickListBtn.addEventListener('click', () => scrollToSection('
 if (quickSalesBtn) quickSalesBtn.addEventListener('click', () => scrollToSection('salesSection'));
 
 applyQuickEntryMode();
+updateSearchClearButton();
 fetchAllData();
 
 document.addEventListener('focusin', (e) => {

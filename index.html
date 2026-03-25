@@ -250,7 +250,12 @@
     .sticky-search-wrap { position: sticky; top: 0; z-index: 50; padding: 10px 0 8px; background: linear-gradient(180deg, rgba(246,247,251,.98), rgba(246,247,251,.82)); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
     .sticky-search-wrap input { width: 100%; min-height: 52px; border-radius: 18px; box-shadow: 0 10px 24px rgba(15,23,42,.08); }
     .global-sticky-search { position: fixed; top: 0; left: 0; right: 0; z-index: 80; padding: 8px 12px 10px; background: linear-gradient(180deg, rgba(246,247,251,.99), rgba(246,247,251,.88)); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
-    .global-sticky-search input { width: 100%; min-height: 56px; border-radius: 22px; box-shadow: 0 14px 28px rgba(15,23,42,.12); max-width: 1200px; margin: 0 auto; display:block; padding-left: 18px; padding-right: 18px; }
+    .global-sticky-search input { width: 100%; min-height: 56px; border-radius: 22px; box-shadow: 0 14px 28px rgba(15,23,42,.12); margin: 0 auto; display:block; padding-left: 44px; padding-right: 44px; }
+    .search-shell { position: relative; max-width: 1200px; margin: 0 auto; }
+    .search-icon { position:absolute; left:14px; top:50%; transform:translateY(-50%); font-size:17px; opacity:.78; pointer-events:none; z-index:2; line-height:1; }
+    .clear-search-btn { position:absolute; right:10px; top:50%; transform:translateY(-50%); width:32px; height:32px; border-radius:999px; background:#eef2f7; color:#4b5563; font-size:14px; padding:0; display:none; z-index:2; box-shadow:0 2px 6px rgba(15,23,42,.08); }
+    .clear-search-btn.show { display:inline-flex; align-items:center; justify-content:center; }
+    #listSection { scroll-margin-top: 110px; }
     .sync-status strong {
       color: #111827;
     }
@@ -388,7 +393,11 @@
 <body>
   <div class="container">
     <div class="global-sticky-search">
-      <input id="searchInput" placeholder="搜索商品名 / 分类 / SKU / 备注" />
+      <div class="search-shell">
+        <span class="search-icon">🔍</span>
+        <input id="searchInput" placeholder="搜索商品名 / 分类 / SKU / 备注" />
+        <button type="button" id="clearSearchBtn" class="clear-search-btn" aria-label="清空搜索">✕</button>
+      </div>
     </div>
 
     <section class="hero compact-hero simple-hero polished-hero">
@@ -553,7 +562,11 @@
       </div>
 
       <div id="mobileList" class="mobile-list"></div>
-      <div id="emptyState" class="empty" style="display:none; margin-top: 12px;">还没有商品数据。先在上面录入一条试试。</div>
+      <div id="emptyState" class="empty" style="display:none; margin-top: 12px;">
+        <div style="font-size:32px; margin-bottom:8px;">📭</div>
+        <div id="emptyStateTitle" style="font-weight:800; color:#111827; margin-bottom:6px;">还没有商品数据</div>
+        <div id="emptyStateText">先在上面录入一条试试。</div>
+      </div>
     </section>
 
     <section class="grid top" style="margin-top: 16px;">
