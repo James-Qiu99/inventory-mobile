@@ -29,6 +29,16 @@ const saleNoteInput = document.getElementById('saleNote');
 const lowStockAlert = document.getElementById('lowStockAlert');
 const periodStats = document.getElementById('periodStats');
 const saleRecords = document.getElementById('saleRecords');
+const quickAddBtn = document.getElementById('quickAddBtn');
+const quickListBtn = document.getElementById('quickListBtn');
+const quickSalesBtn = document.getElementById('quickSalesBtn');
+
+function scrollToSection(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 
 let items = [];
 let saleLogs = [];
@@ -655,5 +665,9 @@ window.deleteItem = function(id) {
 window.sellItem = function(id) {
   openSaleModal(id);
 }
+
+if (quickAddBtn) quickAddBtn.addEventListener('click', () => scrollToSection('formSection'));
+if (quickListBtn) quickListBtn.addEventListener('click', () => scrollToSection('listSection'));
+if (quickSalesBtn) quickSalesBtn.addEventListener('click', () => scrollToSection('salesSection'));
 
 fetchAllData();

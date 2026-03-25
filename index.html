@@ -246,6 +246,68 @@
     }
     .modal h3 { margin: 0 0 8px; font-size: 22px; }
     .modal p { margin: 0 0 14px; color: var(--muted); line-height: 1.6; }
+    .section-anchor { scroll-margin-top: 24px; }
+    .quick-actions {
+      display: none;
+      position: sticky;
+      bottom: 12px;
+      z-index: 30;
+      margin-top: 14px;
+    }
+    .quick-actions-inner {
+      display: grid;
+      grid-template-columns: 1.25fr 1fr 1fr;
+      gap: 10px;
+      padding: 10px;
+      background: rgba(255,255,255,.94);
+      border: 1px solid rgba(229,231,235,.9);
+      border-radius: 18px;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, .12);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+    .quick-actions button {
+      min-height: 52px;
+      border-radius: 14px;
+      font-size: 16px;
+    }
+    .hero-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .hero-badge {
+      background: rgba(255,255,255,.18);
+      border: 1px solid rgba(255,255,255,.22);
+      color: #fff;
+      padding: 7px 11px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .mobile-priority {
+      display: none;
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 16px;
+      background: linear-gradient(180deg, #ffffff, #f8fbff);
+      border: 1px solid #dbeafe;
+    }
+    .mobile-priority-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .mobile-priority .mini {
+      background: #eff6ff;
+      border: 1px solid #dbeafe;
+    }
+    .compact-note {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
 
     @media (max-width: 900px) {
       .grid.top { grid-template-columns: 1fr; }
@@ -256,8 +318,17 @@
       .table-wrap { display: none; }
       .mobile-list { display: grid; }
       .hero h1 { font-size: 28px; }
-      body { padding: 12px; }
+      body { padding: 12px 12px 96px; }
       .card { padding: 14px; }
+      .hero { padding: 18px; border-radius: 22px; }
+      .hero p { font-size: 16px; }
+      .card h2 { font-size: 22px; }
+      .sync-status { font-size: 13px; }
+      .mobile-meta { grid-template-columns: 1fr 1fr; }
+      .mobile-priority { display: block; }
+      .quick-actions { display: block; }
+      .actions button, .actions .button { flex: 1 1 calc(50% - 10px); }
+      .modal { padding: 16px; border-radius: 18px; }
     }
   </style>
 </head>
@@ -265,7 +336,20 @@
   <div class="container">
     <section class="hero">
       <h1>库存管理小工具（手机网页版）</h1>
-      <p>适合手机和电脑通过网页打开使用的小型库存记录工具。支持商品录入、登记卖出记录、总利润、日/月统计、低库存提醒、备份/恢复，以及导出 CSV。数据默认保存在当前设备当前浏览器里，不会自动跨设备同步。</p>
+      <p>现在已经接入云端数据，适合用 iPhone 或电脑随手录入库存、登记卖出、查看低库存提醒和销售情况。</p>
+      <div class="hero-badges">
+        <span class="hero-badge">iPhone 录入优先</span>
+        <span class="hero-badge">云端同步</span>
+        <span class="hero-badge">低库存提醒</span>
+      </div>
+    </section>
+
+    <section class="mobile-priority" aria-label="手机快速总览">
+      <div class="mobile-priority-grid">
+        <div class="mini"><div class="k">快速录入</div><div class="v">新增商品</div></div>
+        <div class="mini"><div class="k">快速查看</div><div class="v">低库存</div></div>
+        <div class="mini"><div class="k">快速操作</div><div class="v">登记卖出</div></div>
+      </div>
     </section>
 
     <section class="card" style="margin-bottom: 16px; border: 1px solid #bfdbfe; background: #eff6ff;">
@@ -279,8 +363,9 @@
     </section>
 
     <section class="grid top">
-      <div class="card">
+      <div class="card section-anchor" id="formSection">
         <h2 id="formTitle">新增商品</h2>
+        <div class="compact-note">建议在 iPhone 上优先填写：商品名称、售价、进货数量；其他字段可以后补。</div>
         <form id="itemForm">
           <div class="form-grid">
             <div class="field">
@@ -349,7 +434,7 @@
       </div>
     </section>
 
-    <section class="card" style="margin-top: 16px;">
+    <section class="card section-anchor" id="listSection" style="margin-top: 16px;">
       <div class="toolbar">
         <div class="toolbar-left">
           <input id="searchInput" placeholder="搜索商品名 / 分类 / SKU / 备注" />
@@ -404,13 +489,23 @@
     <section class="grid top" style="margin-top: 16px;">
       <div class="card">
         <h2>日 / 月销售统计</h2>
+        <div class="compact-note">适合手机快速查看今天卖了多少、本月利润变化。</div>
         <div class="stats" id="periodStats"></div>
       </div>
       <div class="card">
-        <h2>卖出记录（最近 20 条）</h2>
+        <h2 id="salesSection">卖出记录（最近 20 条）</h2>
+        <div class="compact-note">最近成交会显示在这里，方便你随时回看。</div>
         <div id="saleRecords" class="empty">暂无卖出记录。</div>
       </div>
     </section>
+  </div>
+
+  <div class="quick-actions">
+    <div class="quick-actions-inner">
+      <button class="primary" id="quickAddBtn" type="button">+ 新增商品</button>
+      <button class="ghost" id="quickListBtn" type="button">看库存</button>
+      <button class="secondary" id="quickSalesBtn" type="button">看卖出</button>
+    </div>
   </div>
 
   <div id="saleModal" class="modal-backdrop">
