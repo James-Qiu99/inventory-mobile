@@ -6,23 +6,23 @@
   <title>库存管理小工具（手机网页版）</title>
   <style>
     :root {
-      --bg: #f6f7fb;
-      --card: #ffffff;
-      --text: #1f2937;
+      --bg: #f2f2f7;
+      --card: rgba(255,255,255,.88);
+      --text: #111827;
       --muted: #6b7280;
-      --line: #e5e7eb;
-      --primary: #2563eb;
-      --primary-dark: #1d4ed8;
+      --line: rgba(17,24,39,.08);
+      --primary: #0a84ff;
+      --primary-dark: #0066cc;
       --danger: #dc2626;
       --success: #059669;
       --warn: #d97706;
-      --shadow: 0 10px 30px rgba(0,0,0,.08);
-      --radius: 18px;
+      --shadow: 0 12px 30px rgba(15,23,42,.08);
+      --radius: 20px;
     }
 
     * { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; color: var(--text); background: var(--bg); font-size: 18px; }
-    body { padding: 16px; line-height: 1.6; }
+    body { padding: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
 
     .container { max-width: 1200px; margin: 0 auto; padding-top: 74px; }
     .hero {
@@ -55,6 +55,8 @@
       box-shadow: var(--shadow);
       padding: 18px;
       transition: transform .18s ease, box-shadow .18s ease;
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
     }
     .card:active { transform: scale(.995); }
     .card h2 {
@@ -123,22 +125,25 @@
     }
     .stat {
       border: 1px solid var(--line);
-      border-radius: 16px;
-      padding: 14px;
-      background: linear-gradient(180deg, #fff, #fafafa);
+      border-radius: 18px;
+      padding: 16px;
+      background: rgba(255,255,255,.78);
+      box-shadow: 0 10px 24px rgba(15,23,42,.05);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
     }
-    .stat .label { font-size: 15px; color: var(--muted); margin-bottom: 7px; display:flex; align-items:center; gap:6px; }
-    .stat .value { font-size: 28px; font-weight: 800; line-height: 1.15; }
-    .stat .hint { font-size: 13px; color: var(--muted); margin-top: 5px; line-height: 1.45; }
+    .stat .label { font-size: 15px; color: var(--muted); margin-bottom: 8px; display:flex; align-items:center; gap:6px; }
+    .stat .value { font-size: 28px; font-weight: 800; line-height: 1.1; }
+    .stat .hint { font-size: 13px; color: var(--muted); margin-top: 6px; line-height: 1.45; }
 
     .toolbar {
       justify-content: space-between;
       margin-bottom: 14px;
     }
     .workbench-grid { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:12px; margin-top:16px; }
-    .workbench-tile { padding:14px; border-radius:18px; background:linear-gradient(180deg,#fff,#f8fbff); border:1px solid #dbeafe; box-shadow:0 10px 24px rgba(37,99,235,.06); }
-    .workbench-tile .k { font-size:13px; color:var(--muted); margin-bottom:8px; display:flex; align-items:center; gap:6px; }
-    .workbench-tile .v { font-size:24px; font-weight:800; }
+    .workbench-tile { padding:16px; border-radius:18px; background:rgba(255,255,255,.78); border:1px solid rgba(17,24,39,.06); box-shadow:0 10px 24px rgba(15,23,42,.05); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+    .workbench-tile .k { font-size:13px; color:var(--muted); margin-bottom:8px; display:flex; align-items:center; gap:6px; letter-spacing:.01em; }
+    .workbench-tile .v { font-size:26px; font-weight:800; line-height:1.1; }
     .workbench-tile .s { margin-top:6px; font-size:13px; color:var(--muted); }
     .toolbar-left, .toolbar-right {
       display: flex;
@@ -378,10 +383,11 @@
       .hero { padding: 18px; border-radius: 22px; }
       .hero p { font-size: 16px; }
       .card h2 { font-size: 22px; }
-      .stat { padding: 12px; border-radius: 14px; }
-      .stat .label { font-size: 14px; margin-bottom: 5px; }
+      .stat { padding: 14px; border-radius: 16px; }
+      .stat .label { font-size: 14px; margin-bottom: 6px; }
       .stat .value { font-size: 24px; }
       .stat .hint { font-size: 12px; }
+      .workbench-tile { padding:14px; border-radius:16px; }
       .sync-status { font-size: 13px; }
       .mobile-meta { grid-template-columns: 1fr 1fr; }
       .mobile-priority { display: block; }
@@ -510,7 +516,12 @@
       </div>
 
       <div class="card">
-        <h2>📊 总览统计</h2>
+        <div class="section-title-row">
+          <div>
+            <h2 style="font-size:22px; margin:0;">📊 总览统计</h2>
+            <div class="section-kicker">库存、利润和价值一眼看清。</div>
+          </div>
+        </div>
         <div class="stats" id="stats"></div>
         <div id="lowStockAlert" style="margin-top:12px;"></div>
       </div>
@@ -569,8 +580,12 @@
 
     <section class="grid top" style="margin-top: 16px;">
       <div class="card">
-        <h2>🗓️ 日 / 月销售统计</h2>
-        <div class="compact-note">适合手机快速查看今天卖了多少、本月利润变化。</div>
+        <div class="section-title-row">
+          <div>
+            <h2 style="font-size:22px; margin:0;">🗓️ 日 / 月销售统计</h2>
+            <div class="section-kicker">今日和本月的销售变化。</div>
+          </div>
+        </div>
         <div class="stats" id="periodStats"></div>
       </div>
       <div class="card">
