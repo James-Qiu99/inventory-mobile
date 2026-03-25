@@ -510,6 +510,9 @@ function renderInventoryList() {
   inventoryList.innerHTML = list.map((item) => {
     const c = calc(item);
     const lowClass = c.remaining > 0 && c.remaining <= 3 ? 'low' : '';
+    const noteHtml = item.note
+      ? `<div class="inventory-note">备注：${highlightKeyword(item.note, keyword)}</div>`
+      : '';
     return `
       <details class="inventory-item">
         <summary>
@@ -519,34 +522,29 @@ function renderInventoryList() {
           </div>
           <div class="inventory-side">
             <div class="inventory-price">${money(c.sellPrice)}</div>
-            <div class="inventory-sub">当前售价</div>
-            <div class="inventory-remaining">${c.remaining}</div>
-            <div class="inventory-sub">${stockTag(c.remaining)}</div>
+            <div class="inventory-sub">售价</div>
+            <div class="inventory-remaining">${c.remaining} 件</div>
+            <div class="inventory-sub">${c.remaining > 0 ? '可售库存' : '已售空'}</div>
           </div>
         </summary>
         <div class="inventory-body">
           <div class="inventory-banner ${lowClass}">
             <div>
-              <div class="inventory-sub">剩余库存</div>
-              <div class="big">${c.remaining}</div>
+              <div class="inventory-sub">库存状态</div>
+              <div class="big">${c.soldQuantity} 已售 / ${c.remaining} 剩余</div>
             </div>
             <div>${stockTag(c.remaining)}</div>
           </div>
           <div class="inventory-grid">
-            <div class="mini"><div class="k">分类</div><div class="v">${escapeHtml(item.category || '-')}</div></div>
             <div class="mini"><div class="k">SKU</div><div class="v">${escapeHtml(item.sku || '-')}</div></div>
             <div class="mini"><div class="k">进价</div><div class="v">${money(c.costPrice)}</div></div>
-            <div class="mini"><div class="k">售价</div><div class="v">${money(c.sellPrice)}</div></div>
             <div class="mini"><div class="k">进货数量</div><div class="v">${c.quantity}</div></div>
-            <div class="mini"><div class="k">已售 / 剩余</div><div class="v">${c.soldQuantity} / ${c.remaining}</div></div>
+            <div class="mini"><div class="k">供货渠道</div><div class="v">${highlightKeyword(item.supplier || '-', keyword)}</div></div>
             <div class="mini"><div class="k">总成本</div><div class="v">${money(c.totalCost)}</div></div>
             <div class="mini"><div class="k">已实现利润</div><div class="v ${c.realizedProfit >= 0 ? 'money pos' : 'money neg'}">${money(c.realizedProfit)}</div></div>
+            <div class="mini"><div class="k">存放位置</div><div class="v">${highlightKeyword(item.location || '-', keyword)}</div></div>
           </div>
-          <div class="inventory-note">
-            供货渠道：${highlightKeyword(item.supplier || '-', keyword)}<br>
-            存放位置：${highlightKeyword(item.location || '-', keyword)}<br>
-            备注：${highlightKeyword(item.note || '-', keyword)}
-          </div>
+          ${noteHtml}
           <div class="actions">
             <button class="primary" onclick="sellItem('${item.id}')">登记卖出</button>
             <button class="secondary" onclick="editItem('${item.id}')">编辑</button>
