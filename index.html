@@ -29,10 +29,10 @@
 
     .container { max-width: 1200px; margin: 0 auto; padding-top: 74px; }
     .hero {
-      background: linear-gradient(135deg, #2563eb, #4f46e5);
+      background: linear-gradient(135deg, #1d4ed8, #0f766e);
       color: white;
       border-radius: 24px;
-      padding: 22px;
+      padding: 18px;
       box-shadow: var(--shadow);
       margin-bottom: 16px;
     }
@@ -48,6 +48,12 @@
     .hero-icon { width:48px; height:48px; border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:24px; background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.24); box-shadow: inset 0 1px 0 rgba(255,255,255,.18); }
     .hero-subtle { margin-top:4px; font-size:13px; opacity:.88; }
     .hero p { margin: 0; opacity: .92; line-height: 1.7; font-size: 19px; }
+    .dashboard-hero { padding: 16px 18px 18px; }
+    .dashboard-headline { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom: 6px; }
+    .dashboard-kicker { font-size: 12px; font-weight: 800; letter-spacing: .08em; opacity: .78; text-transform: uppercase; }
+    .dashboard-title { margin: 4px 0 0; font-size: 26px; line-height: 1.1; font-weight: 800; }
+    .dashboard-subtitle { margin: 6px 0 0; font-size: 14px; line-height: 1.6; color: rgba(255,255,255,.82); }
+    .dashboard-pill { display:inline-flex; align-items:center; justify-content:center; min-width:44px; height:44px; border-radius:14px; background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.22); font-size:20px; box-shadow: inset 0 1px 0 rgba(255,255,255,.16); }
 
     .grid { display: grid; gap: 16px; }
     .grid.top { grid-template-columns: 1.1fr .9fr; }
@@ -146,12 +152,12 @@
       justify-content: space-between;
       margin-bottom: 14px;
     }
-    .workbench-grid { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:12px; margin-top:16px; }
-    .workbench-tile { padding:16px; border-radius:18px; background:rgba(255,255,255,.78); border:1px solid rgba(17,24,39,.06); box-shadow:0 10px 24px rgba(15,23,42,.05); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); text-align:left; width:100%; }
+    .workbench-grid { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:10px; margin-top:16px; }
+    .workbench-tile { padding:14px; border-radius:18px; background:rgba(255,255,255,.16); color:#fff; border:1px solid rgba(255,255,255,.14); box-shadow:none; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); text-align:left; width:100%; }
     .workbench-tile:hover { transform: translateY(-1px); }
-    .workbench-tile .k { font-size:13px; color:var(--muted); margin-bottom:8px; display:flex; align-items:center; gap:6px; letter-spacing:.01em; }
-    .workbench-tile .v { font-size:26px; font-weight:800; line-height:1.1; }
-    .workbench-tile .s { margin-top:6px; font-size:13px; color:var(--muted); }
+    .workbench-tile .k { font-size:13px; color:rgba(255,255,255,.82); margin-bottom:8px; display:flex; align-items:center; gap:6px; letter-spacing:.01em; }
+    .workbench-tile .v { font-size:25px; font-weight:800; line-height:1.1; }
+    .workbench-tile .s { margin-top:6px; font-size:12px; color:rgba(255,255,255,.74); }
     .toolbar-left, .toolbar-right {
       display: flex;
       flex-wrap: wrap;
@@ -346,31 +352,32 @@
     .quick-actions {
       display: none;
       position: sticky;
-      bottom: 12px;
+      bottom: 10px;
       z-index: 30;
-      margin-top: 14px;
+      margin-top: 10px;
       transition: transform .22s ease, opacity .18s ease;
     }
     .quick-actions.hidden-by-input { opacity: 0; transform: translateY(16px); pointer-events: none; }
     .quick-actions-inner {
       display: grid;
       grid-template-columns: 1.15fr 1fr 1fr .72fr;
-      gap: 10px;
-      padding: 10px;
-      background: rgba(255,255,255,.88);
+      gap: 8px;
+      padding: 8px;
+      background: rgba(255,255,255,.9);
       border: 1px solid rgba(17,24,39,.06);
-      border-radius: 22px;
-      box-shadow: 0 16px 34px rgba(15, 23, 42, .10);
+      border-radius: 18px;
+      box-shadow: 0 12px 24px rgba(15, 23, 42, .08);
       backdrop-filter: blur(18px);
       -webkit-backdrop-filter: blur(18px);
     }
     .quick-actions button {
-      min-height: 54px;
-      border-radius: 18px;
-      font-size: 16px;
+      min-height: 46px;
+      border-radius: 14px;
+      font-size: 15px;
       font-weight: 700;
+      white-space: nowrap;
     }
-    .quick-icon-btn { padding: 0; min-width: 54px; font-size: 20px; }
+    .quick-icon-btn { padding: 0; min-width: 46px; font-size: 18px; }
     .hero-badges {
       display: flex;
       flex-wrap: wrap;
@@ -475,14 +482,16 @@
       .hero h1 { font-size: 28px; }
       body { padding: 12px 12px 96px; }
       .card { padding: 14px; }
-      .hero { padding: 18px; border-radius: 22px; }
+      .hero { padding: 16px; border-radius: 22px; }
       .hero p { font-size: 16px; }
+      .dashboard-title { font-size: 22px; }
+      .dashboard-subtitle { font-size: 13px; }
       .card h2 { font-size: 22px; }
       .stat { padding: 14px; border-radius: 16px; }
       .stat .label { font-size: 14px; margin-bottom: 6px; }
       .stat .value { font-size: 24px; }
       .stat .hint { font-size: 12px; }
-      .workbench-tile { padding:14px; border-radius:16px; }
+      .workbench-tile { padding:13px; border-radius:16px; }
       .sync-status { font-size: 13px; }
       .mobile-meta { grid-template-columns: 1fr 1fr; }
       .mobile-priority { display: block; }
@@ -508,19 +517,14 @@
       </div>
     </div>
 
-    <section class="hero compact-hero simple-hero polished-hero">
-      <div class="hero-title-wrap">
-        <div class="hero-icon">📦</div>
+    <section class="hero dashboard-hero">
+      <div class="dashboard-headline">
         <div>
-          <h1>库存管理工具</h1>
-          <div class="hero-subtle">手机端快速录入</div>
+          <div class="dashboard-kicker">Dashboard</div>
+          <div class="dashboard-title">手机工作台</div>
+          <div class="dashboard-subtitle">先看关键数据，再快速跳到库存、低库存和卖出记录。</div>
         </div>
-      </div>
-      <div class="section-title-row" style="margin-top:14px;">
-        <div>
-          <h2 style="font-size:22px; margin:0;">📱 手机工作台</h2>
-          <div class="section-kicker" style="color:rgba(255,255,255,.82);">先看关键数据，再快速录入或补货。</div>
-        </div>
+        <div class="dashboard-pill">📱</div>
       </div>
       <div class="workbench-grid" id="workbenchGrid"></div>
     </section>
@@ -746,7 +750,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./supabase-config.js?v=20260325f"></script>
-  <script src="./app.js?v=20260325f"></script>
+  <script src="./supabase-config.js?v=20260325g"></script>
+  <script src="./app.js?v=20260325g"></script>
 </body>
 </html>
