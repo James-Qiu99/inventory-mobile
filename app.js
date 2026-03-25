@@ -247,7 +247,16 @@ function setActiveCategoryChip(value = '') {
 
 function applyQuickEntryMode() {
   if (!quickEntryMode || !extraFieldsBlock) return;
-  if (quickEntryMode.checked) extraFieldsBlock.removeAttribute('open');
+
+  if (quickEntryMode.checked) {
+    extraFieldsBlock.removeAttribute('open');
+    if (saveAndNextBtn) saveAndNextBtn.style.display = '';
+    if (submitBtn) submitBtn.textContent = editingId ? '更新商品' : '保存商品';
+  } else {
+    extraFieldsBlock.setAttribute('open', 'open');
+    if (saveAndNextBtn) saveAndNextBtn.style.display = 'none';
+    if (submitBtn) submitBtn.textContent = editingId ? '更新商品' : '保存全部信息';
+  }
 }
 
 function resetForm() {
