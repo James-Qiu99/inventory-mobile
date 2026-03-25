@@ -686,11 +686,11 @@ function renderSaleRecords() {
             </div>
             <div class="sale-mobile-profit ${toNumber(r.profit)>=0?'pos':'neg'}">${money(r.profit)}</div>
           </div>
-          <div class="sale-mobile-grid">
-            <div class="mini"><div class="k">数量</div><div class="v">${r.quantity}</div></div>
-            <div class="mini"><div class="k">成交单价</div><div class="v">${money(r.sale_price)}</div></div>
-            <div class="mini"><div class="k">销售额</div><div class="v">${money(r.revenue)}</div></div>
-            <div class="mini"><div class="k">备注</div><div class="v">${escapeHtml(r.note || '-')}</div></div>
+          <div class="sale-mobile-meta">
+            <span class="sale-mobile-chip"><strong>数量</strong>${r.quantity}</span>
+            <span class="sale-mobile-chip"><strong>单价</strong>${money(r.sale_price)}</span>
+            <span class="sale-mobile-chip"><strong>销售额</strong>${money(r.revenue)}</span>
+            ${r.note ? `<span class="sale-mobile-chip"><strong>备注</strong>${escapeHtml(r.note)}</span>` : ''}
           </div>
         </div>
       `).join('')}

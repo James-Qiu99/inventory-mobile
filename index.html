@@ -128,6 +128,11 @@
     .ghost:hover { background: rgba(17,24,39,.08); }
     .danger { background: rgba(220,38,38,.10); color: #b91c1c; }
     .danger:hover { background: rgba(220,38,38,.16); }
+    .form-actions { gap: 8px; }
+    .form-actions .primary { min-width: 0; flex: 1.2 1 0; }
+    .form-actions .secondary { flex: 1 1 0; box-shadow:none; }
+    .form-actions .ghost { flex: 0 0 auto; padding-left: 14px; padding-right: 14px; color:#6b7280; box-shadow:none; }
+    .form-actions .ghost:hover { color:#374151; }
 
     .stats {
       display: grid;
@@ -464,10 +469,18 @@
       font-weight: 800;
       white-space: nowrap;
     }
-    .sale-mobile-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
+    .sale-mobile-meta {
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      font-size:13px;
+      color:var(--muted);
+      line-height:1.5;
+    }
+    .sale-mobile-chip strong {
+      color:#111827;
+      font-weight:700;
+      margin-right:4px;
     }
     .quick-category-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; margin-bottom:12px; }
     .category-chip { background:#eef2ff; color:#3730a3; border:1px solid #c7d2fe; border-radius:999px; padding:10px 14px; font-size:14px; font-weight:700; }
@@ -620,10 +633,10 @@
           </div>
           </div>
         </details>
-          <div class="actions">
-            <button type="submit" class="primary" id="submitBtn">保存商品</button>
-            <button type="button" class="secondary" id="saveAndNextBtn">保存并继续录入</button>
-            <button type="button" class="ghost" id="resetBtn">清空表单</button>
+            <div class="actions form-actions">
+              <button type="submit" class="primary" id="submitBtn">保存商品</button>
+              <button type="button" class="secondary" id="saveAndNextBtn">保存并继续录入</button>
+              <button type="button" class="ghost" id="resetBtn">清空表单</button>
           </div>
           <div class="compact-note">连续录入时可用“保存并继续录入”，会保留分类等常用值。</div>
         </form>
@@ -633,7 +646,7 @@
         <div class="section-title-row">
           <div>
             <h2 style="font-size:22px; margin:0;">📊 总览统计</h2>
-            <div class="section-kicker">库存、利润和价值一眼看清。</div>
+            <div class="section-kicker">库存与利润总览。</div>
           </div>
         </div>
         <div class="stats" id="stats"></div>
@@ -647,7 +660,7 @@
       <div class="section-title-row">
         <div>
           <h2 style="font-size:22px; margin:0;">📦 库存状态</h2>
-          <div class="section-kicker">按库存、利润和更新时间快速查看商品。</div>
+          <div class="section-kicker">按状态快速查看商品。</div>
         </div>
       </div>
       <div id="searchResultMeta" class="compact-note" style="margin-bottom:10px; display:none;"></div>
@@ -688,14 +701,14 @@
         <div class="section-title-row">
           <div>
             <h2 style="font-size:22px; margin:0;">🗓️ 日 / 月销售统计</h2>
-            <div class="section-kicker">今日和本月的销售变化。</div>
+            <div class="section-kicker">查看今日与本月变化。</div>
           </div>
         </div>
         <div class="stats" id="periodStats"></div>
       </div>
       <div class="card section-anchor" id="salesCard">
         <h2 id="salesSection">🧾 卖出记录</h2>
-        <div class="compact-note">最近成交会显示在这里，方便你随时回看。</div>
+        <div class="compact-note">最近成交记录。</div>
         <div id="saleRecords" class="empty">暂无卖出记录。</div>
         <div class="pagination-bar" style="margin-top:12px;">
           <div id="salesPageInfo" class="pagination-info">共 0 条</div>
@@ -711,7 +724,7 @@
       <div class="section-title-row">
         <div>
           <h2 style="font-size:22px; margin:0;">🧰 工具与数据</h2>
-          <div class="section-kicker">导出、备份、恢复和数据清理都放这里。</div>
+          <div class="section-kicker">导出、备份与恢复。</div>
         </div>
       </div>
       <div id="syncStatus" class="sync-status" style="width:100%; margin-top:0;">
@@ -772,7 +785,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./supabase-config.js?v=20260325m"></script>
-  <script src="./app.js?v=20260325m"></script>
+  <script src="./supabase-config.js?v=20260325n"></script>
+  <script src="./app.js?v=20260325n"></script>
 </body>
 </html>
