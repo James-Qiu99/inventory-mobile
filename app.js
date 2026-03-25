@@ -35,6 +35,9 @@ const periodStats = document.getElementById('periodStats');
 const saleRecords = document.getElementById('saleRecords');
 const workbenchGrid = document.getElementById('workbenchGrid');
 const searchResultMeta = document.getElementById('searchResultMeta');
+const clearSearchBtn = document.getElementById('clearSearchBtn');
+const emptyStateTitle = document.getElementById('emptyStateTitle');
+const emptyStateText = document.getElementById('emptyStateText');
 const quickActions = document.querySelector('.quick-actions');
 const quickAddBtn = document.getElementById('quickAddBtn');
 const quickListBtn = document.getElementById('quickListBtn');
@@ -91,7 +94,7 @@ function escapeHtml(str = '') {
 }
 
 function escapeRegExp(str = '') {
-  return String(str).replace(/[.*+?^${}()|[\]\]/g, '\\$&');
+  return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function highlightKeyword(text, keyword) {
@@ -455,6 +458,11 @@ function getFilteredItems() {
   return list;
 }
 
+function updateSearchClearButton() {
+  if (!clearSearchBtn) return;
+  clearSearchBtn.classList.toggle('show', !!searchInput.value.trim());
+}
+
 function renderSearchMeta(list) {
   const keyword = searchInput.value.trim();
   if (!searchResultMeta) return;
@@ -464,7 +472,7 @@ function renderSearchMeta(list) {
     return;
   }
   searchResultMeta.style.display = 'block';
-  searchResultMeta.innerHTML = `找到 <strong>${list.length}</strong> 条结果 · 关键词：<strong>${escapeHtml(keyword)}</strong>`;
+  searchResultMeta.innerHTML = `🔎 找到 <strong>${list.length}</strong> 条结果 · 关键词：<strong>${escapeHtml(keyword)}</strong>`;
 }
 
 function renderStats() {
@@ -591,6 +599,7 @@ function renderMobile() {
 
 function render() {
   const list = getFilteredItems();
+  updateSearchClearButton();
   renderSearchMeta(list);
   renderWorkbench();
   renderStats();
@@ -671,7 +680,7 @@ form.addEventListener('submit', async (e) => {
 resetBtn.addEventListener('click', () => { keepFormValuesForNext = false; resetForm(); });
 if (saveAndNextBtn) saveAndNextBtn.addEventListener('click', () => { keepFormValuesForNext = true; form.requestSubmit(); });
 if (quickEntryMode) quickEntryMode.addEventListener('change', applyQuickEntryMode);
-searchInput.addEventListener('input', render);
+searchInput.addEventListener('input', () => { updateSearchClearButton(); render(); });
 
 searchInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
@@ -683,6 +692,7 @@ searchInput.addEventListener('keydown', (e) => {
 });
 
 stockFilter.addEventListener('change', render);
+if (clearSearchBtn) clearSearchBtn.addEventListener('click', () => { searchInput.value = ''; updateSearchClearButton(); render(); searchInput.focus(); });
 if (sortFilter) sortFilter.addEventListener('change', render);
 exportBtn.addEventListener('click', exportCSV);
 
