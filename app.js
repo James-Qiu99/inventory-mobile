@@ -636,6 +636,16 @@ resetBtn.addEventListener('click', () => { keepFormValuesForNext = false; resetF
 if (saveAndNextBtn) saveAndNextBtn.addEventListener('click', () => { keepFormValuesForNext = true; form.requestSubmit(); });
 if (quickEntryMode) quickEntryMode.addEventListener('change', applyQuickEntryMode);
 searchInput.addEventListener('input', render);
+
+searchInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    render();
+    scrollToSection('listSection');
+    searchInput.blur();
+  }
+});
+
 stockFilter.addEventListener('change', render);
 if (sortFilter) sortFilter.addEventListener('change', render);
 exportBtn.addEventListener('click', exportCSV);
