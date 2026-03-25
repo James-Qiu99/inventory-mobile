@@ -2,7 +2,7 @@ const SUPABASE_URL = window.SUPABASE_URL || 'https://YOUR_PROJECT.supabase.co';
 const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_KEY';
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const INVENTORY_PAGE_SIZE = 20;
-const INVENTORY_TABLE = 'inventory_items';
+const INVENTORY_TABLE = 'items';
 
 const form = document.getElementById('itemForm');
 const inventoryList = document.getElementById('inventoryList');
@@ -214,64 +214,10 @@ function getFallbackPageRows(sourceItems = items, page = inventoryPage) {
   return filtered.slice(start, start + INVENTORY_PAGE_SIZE);
 }
 
-function buildInventoryQuery() {
-  let query = supabaseClient.from(INVENTORY_TABLE).select('*', { count: 'exact' });
-  const keyword = normalizeSearchTerm(searchInput.value);
-
-  if (keyword) {
-    const term = keyword.replace(/%/g, '\\%').replace(/_/g, '\\_');
-    query = query.or([
-      `name.ilike.%${term}%`,
-      `category.ilike.%${term}%`,
-      `sku.ilike.%${term}%`,
-      `supplier.ilike.%${term}%`,
-      `location.ilike.%${term}%`,
-      `note.ilike.%${term}%`
-    ].join(','));
-  }
-
-  const filter = stockFilter?.value || 'all';
-  if (filter === 'inStock') query = query.gt('remaining', 0);
-  if (filter === 'soldOut') query = query.eq('remaining', 0);
-  if (filter === 'lowStock') query = query.gte('remaining', 1).lte('remaining', 3);
-
-  const mode = sortFilter?.value || 'updated_desc';
-  if (mode === 'stock_asc') {
-    query = query.order('remaining', { ascending: true }).order('updated_at', { ascending: false });
-  } else if (mode === 'profit_desc') {
-    query = query.order('realized_profit', { ascending: false }).order('updated_at', { ascending: false });
-  } else if (mode === 'price_desc') {
-    query = query.order('sell_price', { ascending: false }).order('updated_at', { ascending: false });
-  } else {
-    query = query.order('updated_at', { ascending: false });
-  }
-
-  return query;
-}
-
 async function fetchSaleLogs() {
   const { data, error } = await supabaseClient.from('sales').select('*').order('sold_at', { ascending: false });
   if (error) throw error;
   saleLogs = data || [];
-}
-
-async function fetchInventorySummary() {
-  const { data, error } = await supabaseClient.rpc('inventory_summary');
-  if (error) throw error;
-  inventorySummary = Array.isArray(data) ? (data[0] || null) : data;
-}
-
-async function fetchLowStockPreview() {
-  const { data, error } = await supabaseClient
-    .from(INVENTORY_TABLE)
-    .select('id,name,remaining')
-    .gt('remaining', 0)
-    .lte('remaining', 3)
-    .order('remaining', { ascending: true })
-    .order('updated_at', { ascending: false })
-    .limit(3);
-  if (error) throw error;
-  inventoryLowStock = data || [];
 }
 
 async function loadInventoryFallback(reason = 'query_failed') {
@@ -409,76 +355,49 @@ async function loadInventoryPage({ page = inventoryPage, keepPage = true } = {})
   updatePaginationControls();
 
   try {
-    const offset = (targetPage - 1) * INVENTORY_PAGE_SIZE;
-    const limitEnd = offset + INVENTORY_PAGE_SIZE - 1;
-    const [pageResp, summaryResp, lowStockResp] = await Promise.all([
-      buildInventoryQuery().range(offset, limitEnd),
-      supabaseClient.rpc('inventory_summary'),
-      supabaseClient
-        .from(INVENTORY_TABLE)
-        .select('id,name,remaining')
-        .gt('remaining', 0)
-        .lte('remaining', 3)
-        .order('remaining', { ascending: true })
-        .order('updated_at', { ascending: false })
-        .limit(3)
+    const [{ data: itemsData, error: itemsError }, { data: salesData, error: salesError }] = await Promise.all([
+      supabaseClient.from(INVENTORY_TABLE).select('*').order('updated_at', { ascending: false }),
+      supabaseClient.from('sales').select('*').order('sold_at', { ascending: false })
     ]);
 
     if (requestId !== inventoryRequestSeq) return;
+    if (itemsError) throw itemsError;
+    if (salesError) console.warn(salesError);
 
-    if (pageResp.error) throw pageResp.error;
-    inventoryPageRows = pageResp.data || [];
-    items = inventoryPageRows;
-    inventoryTotalCount = pageResp.count || 0;
+    const allItems = itemsData || [];
+    saleLogs = salesData || [];
+    items = allItems;
+    inventoryMode = 'direct';
+    inventorySummary = buildFallbackInventorySummary(allItems);
+    inventoryLowStock = allItems
+      .map((item) => ({ item, c: calc(item) }))
+      .filter((x) => x.c.remaining > 0 && x.c.remaining <= 3)
+      .sort((a, b) => a.c.remaining - b.c.remaining)
+      .slice(0, 3)
+      .map(({ item, c }) => ({ id: item.id, name: item.name, remaining: c.remaining }));
 
-    if (summaryResp.error) {
-      console.warn(summaryResp.error);
-      inventorySummary = null;
-    } else {
-      inventorySummary = Array.isArray(summaryResp.data) ? (summaryResp.data[0] || null) : summaryResp.data;
-    }
-
-    if (lowStockResp.error) {
-      console.warn(lowStockResp.error);
-      inventoryLowStock = [];
-    } else {
-      inventoryLowStock = lowStockResp.data || [];
-    }
-
+    const filtered = getFilteredAndSortedItems(allItems);
+    inventoryTotalCount = filtered.length;
     const totalPages = getInventoryPageCount();
     if (totalPages && inventoryPage > totalPages) {
-      loading = false;
-      return loadInventoryPage({ page: totalPages, keepPage });
+      inventoryPage = totalPages;
     }
-
-    const { data: salesData, error: salesError } = await supabaseClient.from('sales').select('*').order('sold_at', { ascending: false });
-    if (!salesError) {
-      saleLogs = salesData || [];
-    }
-
-    if (!inventoryPageRows.length && page === 1 && toNumber(getInventorySummary().total_products) > 0 && !normalizeSearchTerm(searchInput.value)) {
-      return loadInventoryFallback('empty_page_with_data');
-    }
+    const start = (Math.max(1, inventoryPage) - 1) * INVENTORY_PAGE_SIZE;
+    inventoryPageRows = filtered.slice(start, start + INVENTORY_PAGE_SIZE);
 
     render();
     const summary = getInventorySummary();
     const currentPageLabel = totalPages ? `${inventoryPage}/${totalPages}` : '0/0';
-    const syncParts = [
+    setSyncStatus([
       `<strong>云端库存：</strong>${inventoryTotalCount} 条`,
       `<strong>当前页：</strong>${currentPageLabel}`,
       `<strong>剩余库存：</strong>${toNumber(summary.remaining_units)} 件`,
       `<strong>卖出记录：</strong>${saleLogs.length} 条`,
-      `<strong>模式：</strong>服务端分页`
-    ];
-    setSyncStatus(syncParts.join('｜'));
+      `<strong>模式：</strong>直接读取 items`
+    ].join('｜'));
   } catch (error) {
     console.error(error);
-    try {
-      await loadInventoryFallback(error?.message || 'query_failed');
-    } catch (fallbackError) {
-      console.error(fallbackError);
-      setSyncStatus(`<strong>加载失败：</strong>${escapeHtml(fallbackError?.message || '请检查 Supabase 配置或数据库视图')}`, true);
-    }
+    setSyncStatus(`<strong>加载失败：</strong>${escapeHtml(error?.message || '请检查 Supabase 配置')}`, true);
   } finally {
     if (requestId === inventoryRequestSeq) {
       loading = false;
