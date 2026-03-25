@@ -275,18 +275,16 @@ async function fetchLowStockPreview() {
 }
 
 async function loadInventoryFallback(reason = 'query_failed') {
-  const [{ data: itemsData, error: itemsError }, { data: salesData, error: salesError }] = await Promise.all([
-    supabaseClient.from('items').select('*').order('updated_at', { ascending: false }),
-    supabaseClient.from('sales').select('*').order('sold_at', { ascending: false })
-  ]);
-
-  if (itemsError || salesError) {
-    throw itemsError || salesError;
+  const { data: itemsData, error: itemsError } = await supabaseClient
+    .from('items')
+    .select('*')
+    .order('updated_at', { ascending: false });
+  if (itemsError) {
+    throw itemsError;
   }
 
   const allItems = itemsData || [];
   items = allItems;
-  saleLogs = salesData || [];
   inventoryMode = 'fallback';
   inventorySummary = buildFallbackInventorySummary(allItems);
   inventoryLowStock = allItems
@@ -297,6 +295,15 @@ async function loadInventoryFallback(reason = 'query_failed') {
     .map(({ item, c }) => ({ id: item.id, name: item.name, remaining: c.remaining }));
   inventoryTotalCount = getFilteredAndSortedItems(allItems).length;
   inventoryPageRows = getFallbackPageRows(allItems, inventoryPage);
+
+  const { data: salesData, error: salesError } = await supabaseClient
+    .from('sales')
+    .select('*')
+    .order('sold_at', { ascending: false });
+  if (!salesError) {
+    saleLogs = salesData || [];
+  }
+
   render();
   const summary = getInventorySummary();
   const totalPages = getInventoryPageCount();
@@ -404,7 +411,8 @@ async function loadInventoryPage({ page = inventoryPage, keepPage = true } = {})
   try {
     const offset = (targetPage - 1) * INVENTORY_PAGE_SIZE;
     const limitEnd = offset + INVENTORY_PAGE_SIZE - 1;
-    const [summaryResp, lowStockResp, pageResp, salesResp] = await Promise.all([
+    const [pageResp, summaryResp, lowStockResp] = await Promise.all([
+      buildInventoryQuery().range(offset, limitEnd),
       supabaseClient.rpc('inventory_summary'),
       supabaseClient
         .from(INVENTORY_TABLE)
@@ -413,12 +421,15 @@ async function loadInventoryPage({ page = inventoryPage, keepPage = true } = {})
         .lte('remaining', 3)
         .order('remaining', { ascending: true })
         .order('updated_at', { ascending: false })
-        .limit(3),
-      buildInventoryQuery().range(offset, limitEnd),
-      supabaseClient.from('sales').select('*').order('sold_at', { ascending: false })
+        .limit(3)
     ]);
 
     if (requestId !== inventoryRequestSeq) return;
+
+    if (pageResp.error) throw pageResp.error;
+    inventoryPageRows = pageResp.data || [];
+    items = inventoryPageRows;
+    inventoryTotalCount = pageResp.count || 0;
 
     if (summaryResp.error) {
       console.warn(summaryResp.error);
@@ -434,28 +445,19 @@ async function loadInventoryPage({ page = inventoryPage, keepPage = true } = {})
       inventoryLowStock = lowStockResp.data || [];
     }
 
-    if (pageResp.error) {
-      throw pageResp.error;
-    }
-    if (salesResp.error) {
-      console.warn(salesResp.error);
-      saleLogs = [];
-    } else {
-      saleLogs = salesResp.data || [];
-    }
-
-    inventoryPageRows = pageResp.data || [];
-    items = inventoryPageRows;
-    inventoryTotalCount = pageResp.count || 0;
-
-    if (!inventoryPageRows.length && page === 1 && toNumber(getInventorySummary().total_products) > 0 && !normalizeSearchTerm(searchInput.value)) {
-      return loadInventoryFallback('empty_page_with_data');
-    }
-
     const totalPages = getInventoryPageCount();
     if (totalPages && inventoryPage > totalPages) {
       loading = false;
       return loadInventoryPage({ page: totalPages, keepPage });
+    }
+
+    const { data: salesData, error: salesError } = await supabaseClient.from('sales').select('*').order('sold_at', { ascending: false });
+    if (!salesError) {
+      saleLogs = salesData || [];
+    }
+
+    if (!inventoryPageRows.length && page === 1 && toNumber(getInventorySummary().total_products) > 0 && !normalizeSearchTerm(searchInput.value)) {
+      return loadInventoryFallback('empty_page_with_data');
     }
 
     render();
