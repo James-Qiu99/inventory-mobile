@@ -272,7 +272,7 @@ function resetForm() {
     document.getElementById('location').value = previousLocation || '';
     setActiveCategoryChip(previousCategory || '');
     keepFormValuesForNext = false;
-    document.getElementById('name').focus();
+    setTimeout(() => document.getElementById('name')?.focus(), 80);
   } else {
     setActiveCategoryChip('');
   }
@@ -630,9 +630,9 @@ restoreFile.addEventListener('change', async (e) => {
     ].join('\n');
     if (!confirm(previewMessage)) return;
 
-    const { error: delSalesError } = await supabaseClient.from('sales').delete().neq('id', '');
+    const { error: delSalesError } = await supabaseClient.from('sales').delete().gte('sold_at', '1900-01-01T00:00:00Z');
     if (delSalesError) throw delSalesError;
-    const { error: delItemsError } = await supabaseClient.from('items').delete().neq('id', '');
+    const { error: delItemsError } = await supabaseClient.from('items').delete().gte('updated_at', '1900-01-01T00:00:00Z');
     if (delItemsError) throw delItemsError;
 
     if (data.items.length) {
@@ -720,9 +720,9 @@ fetchAllData();
 clearAllBtn.addEventListener('click', async () => {
   if (!items.length && !saleLogs.length) return alert('当前没有数据。');
   if (!confirm('确定清空云端全部商品和卖出记录吗？此操作会删除 Supabase 里的库存数据。')) return;
-  const { error: delSalesError } = await supabaseClient.from('sales').delete().neq('id', '');
+  const { error: delSalesError } = await supabaseClient.from('sales').delete().gte('sold_at', '1900-01-01T00:00:00Z');
   if (delSalesError) return alert('清空卖出记录失败：' + delSalesError.message);
-  const { error: delItemsError } = await supabaseClient.from('items').delete().neq('id', '');
+  const { error: delItemsError } = await supabaseClient.from('items').delete().gte('updated_at', '1900-01-01T00:00:00Z');
   if (delItemsError) return alert('清空商品失败：' + delItemsError.message);
   await applyQuickEntryMode();
 fetchAllData();
