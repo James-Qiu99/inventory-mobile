@@ -257,10 +257,8 @@ async function loadInventoryFallback(reason = 'query_failed') {
   const totalPages = getInventoryPageCount();
   setSyncStatus([
     `<strong>云端库存：</strong>${inventoryTotalCount} 条`,
-    `<strong>当前页：</strong>${totalPages ? `${inventoryPage}/${totalPages}` : '0/0'}`,
     `<strong>剩余库存：</strong>${toNumber(summary.remaining_units)} 件`,
-    `<strong>卖出记录：</strong>${saleLogs.length} 条`,
-    `<strong>模式：</strong>已切换到兼容加载`
+    `<strong>卖出记录：</strong>${saleLogs.length} 条`
   ].join('｜'), true);
   return reason;
 }
@@ -269,7 +267,7 @@ function updatePaginationControls() {
   const totalPages = getInventoryPageCount();
   if (pageInfo) {
     pageInfo.textContent = totalPages
-      ? `第 ${inventoryPage} / ${totalPages} 页 · 共 ${inventoryTotalCount} 条`
+      ? `共 ${inventoryTotalCount} 条`
       : '暂无匹配库存';
   }
   if (prevPageBtn) prevPageBtn.disabled = loading || inventoryPage <= 1 || totalPages === 0;
@@ -295,7 +293,6 @@ function renderSearchMeta() {
   const parts = [];
   if (keyword) parts.push(`关键词：<strong>${escapeHtml(keyword)}</strong>`);
   parts.push(`匹配 <strong>${inventoryTotalCount}</strong> 条`);
-  if (totalPages) parts.push(`第 <strong>${inventoryPage}</strong> / <strong>${totalPages}</strong> 页`);
   searchResultMeta.innerHTML = `🔎 ${parts.join(' · ')}`;
 }
 
@@ -394,13 +391,10 @@ async function loadInventoryPage({ page = inventoryPage, keepPage = true } = {})
 
     render();
     const summary = getInventorySummary();
-    const currentPageLabel = totalPages ? `${inventoryPage}/${totalPages}` : '0/0';
     setSyncStatus([
       `<strong>云端库存：</strong>${inventoryTotalCount} 条`,
-      `<strong>当前页：</strong>${currentPageLabel}`,
       `<strong>剩余库存：</strong>${toNumber(summary.remaining_units)} 件`,
-      `<strong>卖出记录：</strong>${saleLogs.length} 条`,
-      `<strong>模式：</strong>直接读取 items`
+      `<strong>卖出记录：</strong>${saleLogs.length} 条`
     ].join('｜'));
   } catch (error) {
     console.error(error);
