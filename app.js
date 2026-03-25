@@ -341,7 +341,7 @@ async function removeItem(id) {
   }
   if (editingId === id) resetForm();
   await applyQuickEntryMode();
-fetchAllData();
+  await fetchAllData();
 }
 
 function getFilteredItems() {
@@ -564,7 +564,7 @@ async function loadSampleData() {
     return;
   }
   await applyQuickEntryMode();
-fetchAllData();
+  await fetchAllData();
   resetForm();
 }
 
@@ -589,7 +589,7 @@ form.addEventListener('submit', async (e) => {
     return;
   }
   await applyQuickEntryMode();
-fetchAllData();
+  await fetchAllData();
   resetForm();
 });
 
@@ -659,7 +659,7 @@ restoreFile.addEventListener('change', async (e) => {
     }
 
     await applyQuickEntryMode();
-fetchAllData();
+    await fetchAllData();
     resetForm();
     alert(`恢复成功：已导入 ${data.items.length} 条商品，${importedSales.length} 条卖出记录。`);
   } catch (err) {
@@ -720,7 +720,7 @@ saleForm.addEventListener('submit', async (e) => {
   }
 
   await applyQuickEntryMode();
-fetchAllData();
+  await fetchAllData();
   closeSaleModal();
 });
 
@@ -732,7 +732,7 @@ clearAllBtn.addEventListener('click', async () => {
   const { error: delItemsError } = await supabaseClient.from('items').delete().gte('updated_at', '1900-01-01T00:00:00Z');
   if (delItemsError) return alert('清空商品失败：' + delItemsError.message);
   await applyQuickEntryMode();
-fetchAllData();
+  await fetchAllData();
   resetForm();
 });
 
