@@ -173,12 +173,19 @@
 
     .mobile-list { display: none; gap: 12px; }
     .mobile-item {
-      border: 1px solid var(--line);
-      border-radius: 16px;
+      border: 1px solid #dbeafe;
+      border-radius: 20px;
       padding: 14px;
-      background: white;
+      background: linear-gradient(180deg, #ffffff, #f8fbff);
+      box-shadow: 0 10px 24px rgba(37,99,235,.08);
     }
-    .mobile-item h3 { margin: 0 0 10px; font-size: 19px; }
+    .mobile-item h3 { margin: 0; font-size: 19px; }
+    .mobile-item-header { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:10px; }
+    .mobile-item-price { font-size: 24px; font-weight: 800; color: #111827; line-height: 1.1; }
+    .mobile-item-sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    .mobile-stock-banner { display:flex; align-items:center; justify-content:space-between; gap:10px; padding: 11px 12px; border-radius: 14px; background:#eff6ff; border:1px solid #dbeafe; margin-bottom:10px; }
+    .mobile-stock-banner.low { background:#fff7ed; border-color:#fed7aa; }
+    .mobile-stock-banner .big { font-size: 22px; font-weight: 800; }
     .mobile-meta {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -237,15 +244,16 @@
     .modal-backdrop.show { display: flex; }
     .modal {
       width: 100%;
-      max-width: 520px;
+      max-width: 560px;
       background: white;
-      border-radius: 20px;
+      border-radius: 24px;
       box-shadow: var(--shadow);
-      padding: 18px;
+      padding: 20px;
       border: 1px solid var(--line);
     }
     .modal h3 { margin: 0 0 8px; font-size: 22px; }
     .modal p { margin: 0 0 14px; color: var(--muted); line-height: 1.6; }
+    .sale-primary-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
     .section-anchor { scroll-margin-top: 24px; }
     .quick-actions {
       display: none;
@@ -308,6 +316,11 @@
       color: var(--muted);
       line-height: 1.6;
     }
+    .quick-category-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; margin-bottom:12px; }
+    .category-chip { background:#eef2ff; color:#3730a3; border:1px solid #c7d2fe; border-radius:999px; padding:10px 14px; font-size:14px; font-weight:700; }
+    .category-chip.active { background:#2563eb; color:#fff; border-color:#2563eb; }
+    .form-steps { margin-top:12px; border:1px solid var(--line); border-radius:16px; padding:12px; background:#fcfcfd; }
+    .form-steps summary { cursor:pointer; font-weight:700; color:#111827; }
 
     @media (max-width: 900px) {
       .grid.top { grid-template-columns: 1fr; }
@@ -366,6 +379,16 @@
       <div class="card section-anchor" id="formSection">
         <h2 id="formTitle">新增商品</h2>
         <div class="compact-note">建议在 iPhone 上优先填写：商品名称、售价、进货数量；其他字段可以后补。</div>
+        <div class="quick-category-row" id="quickCategoryRow">
+          <button type="button" class="category-chip" data-category="手机">手机</button>
+          <button type="button" class="category-chip" data-category="数码配件">数码配件</button>
+          <button type="button" class="category-chip" data-category="美妆">美妆</button>
+          <button type="button" class="category-chip" data-category="饰品">饰品</button>
+          <button type="button" class="category-chip" data-category="日用品">日用品</button>
+          <button type="button" class="category-chip" data-category="其他">其他</button>
+        </div>
+        <details class="form-steps" open>
+          <summary>第一步：先填核心字段</summary>
         <form id="itemForm">
           <div class="form-grid">
             <div class="field">
@@ -404,6 +427,10 @@
               <label for="soldQuantity">已售数量</label>
               <input id="soldQuantity" type="number" min="0" step="1" placeholder="0" />
             </div>
+            </details>
+        <details class="form-steps">
+          <summary>第二步：补充更多信息（可选）</summary>
+          <div class="form-grid" style="margin-top:12px;">
             <div class="field">
               <label for="location">存放位置</label>
               <input id="location" placeholder="例如：仓库 A / 家里柜子" />
@@ -413,6 +440,8 @@
               <textarea id="note" placeholder="可写颜色、规格、购买日期、特殊情况等"></textarea>
             </div>
           </div>
+          </div>
+        </details>
           <div class="actions">
             <button type="submit" class="primary" id="submitBtn">保存商品</button>
             <button type="button" class="ghost" id="resetBtn">清空表单</button>
@@ -443,6 +472,12 @@
             <option value="inStock">只看有库存</option>
             <option value="soldOut">只看已售空</option>
             <option value="lowStock">只看低库存（≤ 3）</option>
+          </select>
+          <select id="sortFilter">
+            <option value="updated_desc">按最近更新</option>
+            <option value="stock_asc">按库存从少到多</option>
+            <option value="profit_desc">按利润从高到低</option>
+            <option value="price_desc">按售价从高到低</option>
           </select>
         </div>
         <div id="syncStatus" class="sync-status" style="width:100%;">

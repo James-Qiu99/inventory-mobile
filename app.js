@@ -12,6 +12,7 @@ const submitBtn = document.getElementById('submitBtn');
 const resetBtn = document.getElementById('resetBtn');
 const searchInput = document.getElementById('searchInput');
 const stockFilter = document.getElementById('stockFilter');
+const sortFilter = document.getElementById('sortFilter');
 const exportBtn = document.getElementById('exportBtn');
 const sampleBtn = document.getElementById('sampleBtn');
 const backupBtn = document.getElementById('backupBtn');
@@ -32,6 +33,7 @@ const saleRecords = document.getElementById('saleRecords');
 const quickAddBtn = document.getElementById('quickAddBtn');
 const quickListBtn = document.getElementById('quickListBtn');
 const quickSalesBtn = document.getElementById('quickSalesBtn');
+const categoryChips = [...document.querySelectorAll('.category-chip')];
 
 function scrollToSection(id) {
   const el = document.getElementById(id);
@@ -234,11 +236,16 @@ function closeSaleModal() {
   saleModal.classList.remove('show');
 }
 
+function setActiveCategoryChip(value = '') {
+  categoryChips.forEach((chip) => chip.classList.toggle('active', chip.dataset.category === value));
+}
+
 function resetForm() {
   form.reset();
   editingId = null;
   formTitle.textContent = '新增商品';
   submitBtn.textContent = '保存商品';
+  setActiveCategoryChip('');
 }
 
 function getFormData() {
@@ -265,6 +272,7 @@ function fillForm(item) {
   submitBtn.textContent = '更新商品';
   document.getElementById('name').value = item.name || '';
   document.getElementById('category').value = item.category || '';
+  setActiveCategoryChip(item.category || '');
   document.getElementById('sku').value = item.sku || '';
   document.getElementById('supplier').value = item.supplier || '';
   document.getElementById('costPrice').value = item.cost_price ?? '';
@@ -299,7 +307,7 @@ async function removeItem(id) {
 function getFilteredItems() {
   const keyword = searchInput.value.trim().toLowerCase();
   const filter = stockFilter.value;
-  return items.filter(item => {
+  let list = items.filter(item => {
     const c = calc(item);
     const searchable = [item.name, item.category, item.sku, item.supplier, item.location, item.note].join(' ').toLowerCase();
     const hitKeyword = !keyword || searchable.includes(keyword);
@@ -308,7 +316,18 @@ function getFilteredItems() {
     if (filter === 'soldOut') hitFilter = c.remaining === 0;
     if (filter === 'lowStock') hitFilter = c.remaining > 0 && c.remaining <= 3;
     return hitKeyword && hitFilter;
-  }).sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
+  });
+
+  const mode = sortFilter?.value || 'updated_desc';
+  list.sort((a, b) => {
+    const ca = calc(a);
+    const cb = calc(b);
+    if (mode === 'stock_asc') return ca.remaining - cb.remaining;
+    if (mode === 'profit_desc') return cb.realizedProfit - ca.realizedProfit;
+    if (mode === 'price_desc') return cb.sellPrice - ca.sellPrice;
+    return new Date(b.updated_at || 0) - new Date(a.updated_at || 0);
+  });
+  return list;
 }
 
 function renderStats() {
@@ -387,10 +406,26 @@ function renderMobile() {
   const list = getFilteredItems();
   mobileList.innerHTML = list.map(item => {
     const c = calc(item);
+    const lowClass = c.remaining > 0 && c.remaining <= 3 ? 'low' : '';
     return `
       <div class="mobile-item">
-        <h3>${escapeHtml(item.name)}</h3>
-        <div style="margin-bottom:10px;">${stockTag(c.remaining)}</div>
+        <div class="mobile-item-header">
+          <div>
+            <h3>${escapeHtml(item.name)}</h3>
+            <div class="mobile-item-sub">${escapeHtml(item.category || '未分类')} · ${escapeHtml(item.sku || '无 SKU')}</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="mobile-item-price">${money(c.sellPrice)}</div>
+            <div class="mobile-item-sub">当前售价</div>
+          </div>
+        </div>
+        <div class="mobile-stock-banner ${lowClass}">
+          <div>
+            <div class="mobile-item-sub">剩余库存</div>
+            <div class="big">${c.remaining}</div>
+          </div>
+          <div>${stockTag(c.remaining)}</div>
+        </div>
         <div class="mobile-meta">
           <div class="mini"><div class="k">分类</div><div class="v">${escapeHtml(item.category || '-')}</div></div>
           <div class="mini"><div class="k">SKU</div><div class="v">${escapeHtml(item.sku || '-')}</div></div>
@@ -519,6 +554,7 @@ form.addEventListener('submit', async (e) => {
 resetBtn.addEventListener('click', resetForm);
 searchInput.addEventListener('input', render);
 stockFilter.addEventListener('change', render);
+if (sortFilter) sortFilter.addEventListener('change', render);
 exportBtn.addEventListener('click', exportCSV);
 sampleBtn.addEventListener('click', loadSampleData);
 
@@ -665,6 +701,14 @@ window.deleteItem = function(id) {
 window.sellItem = function(id) {
   openSaleModal(id);
 }
+
+categoryChips.forEach((chip) => {
+  chip.addEventListener('click', () => {
+    const categoryInput = document.getElementById('category');
+    categoryInput.value = chip.dataset.category || '';
+    setActiveCategoryChip(chip.dataset.category || '');
+  });
+});
 
 if (quickAddBtn) quickAddBtn.addEventListener('click', () => scrollToSection('formSection'));
 if (quickListBtn) quickListBtn.addEventListener('click', () => scrollToSection('listSection'));
