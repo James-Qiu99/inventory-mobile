@@ -646,6 +646,25 @@ function renderSaleRecords() {
   const rows = [...saleLogs].sort((a,b)=>new Date(b.sold_at)-new Date(a.sold_at)).slice(0,20);
   saleRecords.className = '';
   saleRecords.innerHTML = `
+    <div class="sale-mobile-list">
+      ${rows.map((r) => `
+        <div class="sale-mobile-item">
+          <div class="sale-mobile-top">
+            <div>
+              <div class="sale-mobile-name">${escapeHtml(r.item_name || '-')}</div>
+              <div class="sale-mobile-time">${escapeHtml(new Date(r.sold_at).toLocaleString('zh-CN'))}</div>
+            </div>
+            <div class="sale-mobile-profit ${toNumber(r.profit)>=0?'pos':'neg'}">${money(r.profit)}</div>
+          </div>
+          <div class="sale-mobile-grid">
+            <div class="mini"><div class="k">数量</div><div class="v">${r.quantity}</div></div>
+            <div class="mini"><div class="k">成交单价</div><div class="v">${money(r.sale_price)}</div></div>
+            <div class="mini"><div class="k">销售额</div><div class="v">${money(r.revenue)}</div></div>
+            <div class="mini"><div class="k">备注</div><div class="v">${escapeHtml(r.note || '-')}</div></div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
     <div class="table-wrap">
       <table style="min-width:720px;">
         <thead>
