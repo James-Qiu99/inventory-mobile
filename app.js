@@ -272,7 +272,14 @@ function resetForm() {
     document.getElementById('location').value = previousLocation || '';
     setActiveCategoryChip(previousCategory || '');
     keepFormValuesForNext = false;
-    setTimeout(() => document.getElementById('name')?.focus(), 80);
+    setTimeout(() => {
+      scrollToSection('formSection');
+      const nameInput = document.getElementById('name');
+      if (nameInput) {
+        nameInput.focus();
+        nameInput.select?.();
+      }
+    }, 120);
   } else {
     setActiveCategoryChip('');
   }
