@@ -429,6 +429,7 @@ async function loadInventoryPage({ page = inventoryPage, keepPage = true } = {})
     if (requestId === inventoryRequestSeq) {
       loading = false;
       updatePaginationControls();
+      updateSalesPaginationControls();
     }
   }
 }
