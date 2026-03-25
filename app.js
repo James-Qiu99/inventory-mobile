@@ -830,6 +830,48 @@ function getFormData() {
   };
 }
 
+function buildMergedItemPayload(existingItem, incomingItem) {
+  const mergedNote = [existingItem.note, incomingItem.note]
+    .map((value) => String(value || '').trim())
+    .filter(Boolean)
+    .filter((value, index, arr) => arr.indexOf(value) === index)
+    .join('\n');
+
+  return {
+    ...existingItem,
+    name: existingItem.name || incomingItem.name,
+    category: existingItem.category || incomingItem.category,
+    sku: existingItem.sku || incomingItem.sku,
+    supplier: existingItem.supplier || incomingItem.supplier,
+    cost_price: toNumber(existingItem.cost_price || incomingItem.cost_price),
+    market_price: toNumber(existingItem.market_price || incomingItem.market_price),
+    sell_price: toNumber(existingItem.sell_price || incomingItem.sell_price),
+    quantity: Math.max(0, Math.floor(toNumber(existingItem.quantity) + toNumber(incomingItem.quantity))),
+    sold_quantity: Math.max(0, Math.floor(toNumber(existingItem.sold_quantity) + toNumber(incomingItem.sold_quantity))),
+    location: existingItem.location || incomingItem.location,
+    note: mergedNote,
+    updated_at: new Date().toISOString()
+  };
+}
+
+async function findMergeCandidate(data) {
+  const { data: matches, error } = await supabaseClient
+    .from('items')
+    .select('*')
+    .eq('name', data.name)
+    .eq('cost_price', data.cost_price)
+    .limit(10);
+
+  if (error) throw error;
+  if (!matches?.length) return null;
+
+  const normalizedSku = String(data.sku || '').trim();
+  if (normalizedSku) {
+    return matches.find((item) => String(item.sku || '').trim() === normalizedSku) || matches[0];
+  }
+  return matches[0];
+}
+
 function fillForm(item) {
   editingId = item.id;
   formTitle.textContent = '编辑商品';
@@ -960,9 +1002,24 @@ form.addEventListener('submit', async (e) => {
     return;
   }
 
-  const { error } = editingId
-    ? await supabaseClient.from('items').update(data).eq('id', data.id)
-    : await supabaseClient.from('items').insert(data);
+  let error = null;
+
+  if (editingId) {
+    ({ error } = await supabaseClient.from('items').update(data).eq('id', data.id));
+  } else {
+    const mergeCandidate = await findMergeCandidate(data);
+    if (mergeCandidate) {
+      const shouldMerge = confirm(`已存在同名且进价相同的商品「${mergeCandidate.name}」。\n要把这次录入的数量合并到原商品里吗？`);
+      if (shouldMerge) {
+        const mergedData = buildMergedItemPayload(mergeCandidate, data);
+        ({ error } = await supabaseClient.from('items').update(mergedData).eq('id', mergeCandidate.id));
+      } else {
+        ({ error } = await supabaseClient.from('items').insert(data));
+      }
+    } else {
+      ({ error } = await supabaseClient.from('items').insert(data));
+    }
+  }
 
   if (error) {
     alert((editingId ? '更新' : '保存') + '失败：' + error.message);
