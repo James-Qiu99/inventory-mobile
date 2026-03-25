@@ -1,10 +1,11 @@
 const SUPABASE_URL = window.SUPABASE_URL || 'https://YOUR_PROJECT.supabase.co';
 const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_KEY';
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const INVENTORY_PAGE_SIZE = 20;
+const INVENTORY_TABLE = 'inventory_items';
 
 const form = document.getElementById('itemForm');
-const tableBody = document.getElementById('tableBody');
-const mobileList = document.getElementById('mobileList');
+const inventoryList = document.getElementById('inventoryList');
 const stats = document.getElementById('stats');
 const emptyState = document.getElementById('emptyState');
 const formTitle = document.getElementById('formTitle');
@@ -38,6 +39,9 @@ const searchResultMeta = document.getElementById('searchResultMeta');
 const clearSearchBtn = document.getElementById('clearSearchBtn');
 const emptyStateTitle = document.getElementById('emptyStateTitle');
 const emptyStateText = document.getElementById('emptyStateText');
+const pageInfo = document.getElementById('pageInfo');
+const prevPageBtn = document.getElementById('prevPageBtn');
+const nextPageBtn = document.getElementById('nextPageBtn');
 const quickActions = document.querySelector('.quick-actions');
 const quickAddBtn = document.getElementById('quickAddBtn');
 const quickListBtn = document.getElementById('quickListBtn');
@@ -71,6 +75,13 @@ let editingId = null;
 let saleItemId = null;
 let loading = false;
 let keepFormValuesForNext = false;
+let inventoryPage = 1;
+let inventoryTotalCount = 0;
+let inventoryPageRows = [];
+let inventorySummary = null;
+let inventoryLowStock = [];
+let inventoryRequestSeq = 0;
+let inventoryReloadTimer = null;
 
 function toNumber(value) {
   const n = Number(value);
@@ -136,29 +147,266 @@ function setSyncStatus(message, warn = false) {
   syncStatus.innerHTML = message;
 }
 
-async function fetchAllData() {
-  loading = true;
-  setSyncStatus('<strong>同步中：</strong>正在从 Supabase 拉取数据...');
-  const [{ data: itemsData, error: itemsError }, { data: salesData, error: salesError }] = await Promise.all([
-    supabaseClient.from('items').select('*').order('updated_at', { ascending: false }),
-    supabaseClient.from('sales').select('*').order('sold_at', { ascending: false })
-  ]);
-  loading = false;
+function normalizeSearchTerm(value = '') {
+  return String(value)
+    .trim()
+    .replace(/[(),]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
-  if (itemsError || salesError) {
-    console.error(itemsError || salesError);
-    setSyncStatus(`<strong>同步失败：</strong>${escapeHtml((itemsError || salesError).message || '请检查 Supabase 配置')}`, true);
+function getInventoryPageCount(totalCount = inventoryTotalCount) {
+  return totalCount > 0 ? Math.max(1, Math.ceil(totalCount / INVENTORY_PAGE_SIZE)) : 0;
+}
+
+function buildFallbackInventorySummary(rows = inventoryPageRows) {
+  const calcRows = rows.map((row) => calc(row));
+  return {
+    total_products: rows.length,
+    total_units: calcRows.reduce((sum, row) => sum + row.quantity, 0),
+    sold_units: calcRows.reduce((sum, row) => sum + row.soldQuantity, 0),
+    remaining_units: calcRows.reduce((sum, row) => sum + row.remaining, 0),
+    total_cost: calcRows.reduce((sum, row) => sum + row.totalCost, 0),
+    realized_profit: calcRows.reduce((sum, row) => sum + row.realizedProfit, 0),
+    estimated_total_profit: calcRows.reduce((sum, row) => sum + ((row.sellPrice - row.costPrice) * row.quantity), 0),
+    remaining_market_value: calcRows.reduce((sum, row) => sum + row.marketValue, 0),
+    remaining_sale_value: calcRows.reduce((sum, row) => sum + row.potentialRevenue, 0),
+    low_stock_count: calcRows.filter((row) => row.remaining > 0 && row.remaining <= 3).length
+  };
+}
+
+function getInventorySummary() {
+  return inventorySummary || buildFallbackInventorySummary();
+}
+
+function buildInventoryQuery() {
+  let query = supabaseClient.from(INVENTORY_TABLE).select('*', { count: 'exact' });
+  const keyword = normalizeSearchTerm(searchInput.value);
+
+  if (keyword) {
+    const term = keyword.replace(/%/g, '\\%').replace(/_/g, '\\_');
+    query = query.or([
+      `name.ilike.%${term}%`,
+      `category.ilike.%${term}%`,
+      `sku.ilike.%${term}%`,
+      `supplier.ilike.%${term}%`,
+      `location.ilike.%${term}%`,
+      `note.ilike.%${term}%`
+    ].join(','));
+  }
+
+  const filter = stockFilter?.value || 'all';
+  if (filter === 'inStock') query = query.gt('remaining', 0);
+  if (filter === 'soldOut') query = query.eq('remaining', 0);
+  if (filter === 'lowStock') query = query.gte('remaining', 1).lte('remaining', 3);
+
+  const mode = sortFilter?.value || 'updated_desc';
+  if (mode === 'stock_asc') {
+    query = query.order('remaining', { ascending: true }).order('updated_at', { ascending: false });
+  } else if (mode === 'profit_desc') {
+    query = query.order('realized_profit', { ascending: false }).order('updated_at', { ascending: false });
+  } else if (mode === 'price_desc') {
+    query = query.order('sell_price', { ascending: false }).order('updated_at', { ascending: false });
+  } else {
+    query = query.order('updated_at', { ascending: false });
+  }
+
+  return query;
+}
+
+async function fetchSaleLogs() {
+  const { data, error } = await supabaseClient.from('sales').select('*').order('sold_at', { ascending: false });
+  if (error) throw error;
+  saleLogs = data || [];
+}
+
+async function fetchInventorySummary() {
+  const { data, error } = await supabaseClient.rpc('inventory_summary');
+  if (error) throw error;
+  inventorySummary = Array.isArray(data) ? (data[0] || null) : data;
+}
+
+async function fetchLowStockPreview() {
+  const { data, error } = await supabaseClient
+    .from(INVENTORY_TABLE)
+    .select('id,name,remaining')
+    .gt('remaining', 0)
+    .lte('remaining', 3)
+    .order('remaining', { ascending: true })
+    .order('updated_at', { ascending: false })
+    .limit(3);
+  if (error) throw error;
+  inventoryLowStock = data || [];
+}
+
+function updatePaginationControls() {
+  const totalPages = getInventoryPageCount();
+  if (pageInfo) {
+    pageInfo.textContent = totalPages
+      ? `第 ${inventoryPage} / ${totalPages} 页 · 共 ${inventoryTotalCount} 条`
+      : '暂无匹配库存';
+  }
+  if (prevPageBtn) prevPageBtn.disabled = loading || inventoryPage <= 1 || totalPages === 0;
+  if (nextPageBtn) nextPageBtn.disabled = loading || inventoryPage >= totalPages || totalPages === 0;
+}
+
+function renderSearchMeta() {
+  if (!searchResultMeta) return;
+  const keyword = normalizeSearchTerm(searchInput.value);
+  const totalPages = getInventoryPageCount();
+  if (!keyword && !inventoryTotalCount) {
+    searchResultMeta.style.display = 'none';
+    searchResultMeta.textContent = '';
     return;
   }
 
-  items = itemsData || [];
-  saleLogs = salesData || [];
-  render();
-  setSyncStatus([
-    `<strong>云端商品：</strong>${items.length} 条`,
-    `<strong>云端卖出记录：</strong>${saleLogs.length} 条`,
-    `<strong>状态：</strong>已连接 Supabase`
-  ].join('｜'));
+  searchResultMeta.style.display = 'block';
+  const parts = [];
+  if (keyword) parts.push(`关键词：<strong>${escapeHtml(keyword)}</strong>`);
+  parts.push(`匹配 <strong>${inventoryTotalCount}</strong> 条`);
+  if (totalPages) parts.push(`第 <strong>${inventoryPage}</strong> / <strong>${totalPages}</strong> 页`);
+  searchResultMeta.innerHTML = `🔎 ${parts.join(' · ')}`;
+}
+
+function renderWorkbench() {
+  if (!workbenchGrid) return;
+  const summary = getInventorySummary();
+  const period = computePeriodStats();
+  const totalRemaining = toNumber(summary.remaining_units);
+  const lowCount = toNumber(summary.low_stock_count);
+  const tiles = [
+    ['🛍️', '今日卖出', period.dayQty, '件数'],
+    ['💰', '本月利润', money(period.monthProfit), '自然月累计'],
+    ['⚠️', '低库存', lowCount, '需要关注'],
+    ['📦', '剩余库存', totalRemaining, '当前可售']
+  ];
+  workbenchGrid.innerHTML = tiles.map(([icon, label, value, sub]) => `
+    <div class="workbench-tile">
+      <div class="k"><span class="icon-inline">${icon}</span>${label}</div>
+      <div class="v">${value}</div>
+      <div class="s">${sub}</div>
+    </div>
+  `).join('');
+}
+
+function renderLowStockAlert() {
+  if (!lowStockAlert) return;
+  if (!inventoryLowStock.length) {
+    lowStockAlert.innerHTML = '<span class="tag">库存状态良好</span>';
+    return;
+  }
+  lowStockAlert.innerHTML = `
+    <div style="border:1px solid #fdba74;background:linear-gradient(180deg,#fff7ed,#fffbeb);border-radius:14px;padding:12px 14px;color:#9a3412;font-size:14px;box-shadow:0 8px 20px rgba(245,158,11,.10);">
+      <strong>⚠️ 低库存提醒：</strong>${inventoryLowStock.map((x) => `${escapeHtml(x.name)}（剩 ${toNumber(x.remaining)}）`).join('、')}
+    </div>`;
+}
+
+function renderStats() {
+  const summary = getInventorySummary();
+  const cards = [
+    ['商品种类', toNumber(summary.total_products), `共录入 ${toNumber(summary.total_products)} 种商品`],
+    ['进货总数量', toNumber(summary.total_units), `已售 ${toNumber(summary.sold_units)}，剩余 ${toNumber(summary.remaining_units)}`],
+    ['总进货成本', money(summary.total_cost), '按全部库存统计'],
+    ['已实现利润', money(summary.realized_profit), '已售数量对应的利润'],
+    ['总利润（预计）', money(summary.estimated_total_profit), '按全部进货数量估算'],
+    ['剩余库存按市场价', money(summary.remaining_market_value), '市场价 × 剩余库存'],
+    ['剩余库存按售价', money(summary.remaining_sale_value), '售价 × 剩余库存']
+  ];
+
+  stats.innerHTML = cards.map(([label, value, hint]) => `
+    <div class="stat">
+      <div class="label">${label}</div>
+      <div class="value">${value}</div>
+      <div class="hint">${hint}</div>
+    </div>
+  `).join('');
+}
+
+async function loadInventoryPage({ page = inventoryPage, keepPage = true } = {}) {
+  const requestId = ++inventoryRequestSeq;
+  const targetPage = Math.max(1, page || 1);
+  inventoryPage = targetPage;
+  loading = true;
+  setSyncStatus('<strong>同步中：</strong>正在加载库存和统计数据...');
+  updatePaginationControls();
+
+  try {
+    const offset = (targetPage - 1) * INVENTORY_PAGE_SIZE;
+    const limitEnd = offset + INVENTORY_PAGE_SIZE - 1;
+    const [summaryResp, lowStockResp, pageResp, salesResp] = await Promise.all([
+      supabaseClient.rpc('inventory_summary'),
+      supabaseClient
+        .from(INVENTORY_TABLE)
+        .select('id,name,remaining')
+        .gt('remaining', 0)
+        .lte('remaining', 3)
+        .order('remaining', { ascending: true })
+        .order('updated_at', { ascending: false })
+        .limit(3),
+      buildInventoryQuery().range(offset, limitEnd),
+      supabaseClient.from('sales').select('*').order('sold_at', { ascending: false })
+    ]);
+
+    if (requestId !== inventoryRequestSeq) return;
+
+    if (summaryResp.error) {
+      console.warn(summaryResp.error);
+      inventorySummary = null;
+    } else {
+      inventorySummary = Array.isArray(summaryResp.data) ? (summaryResp.data[0] || null) : summaryResp.data;
+    }
+
+    if (lowStockResp.error) {
+      console.warn(lowStockResp.error);
+      inventoryLowStock = [];
+    } else {
+      inventoryLowStock = lowStockResp.data || [];
+    }
+
+    if (pageResp.error) {
+      throw pageResp.error;
+    }
+    if (salesResp.error) {
+      console.warn(salesResp.error);
+      saleLogs = [];
+    } else {
+      saleLogs = salesResp.data || [];
+    }
+
+    inventoryPageRows = pageResp.data || [];
+    items = inventoryPageRows;
+    inventoryTotalCount = pageResp.count || 0;
+
+    const totalPages = getInventoryPageCount();
+    if (totalPages && inventoryPage > totalPages) {
+      loading = false;
+      return loadInventoryPage({ page: totalPages, keepPage });
+    }
+
+    render();
+    const summary = getInventorySummary();
+    const currentPageLabel = totalPages ? `${inventoryPage}/${totalPages}` : '0/0';
+    const syncParts = [
+      `<strong>云端库存：</strong>${inventoryTotalCount} 条`,
+      `<strong>当前页：</strong>${currentPageLabel}`,
+      `<strong>剩余库存：</strong>${toNumber(summary.remaining_units)} 件`,
+      `<strong>卖出记录：</strong>${saleLogs.length} 条`
+    ];
+    setSyncStatus(syncParts.join('｜'));
+  } catch (error) {
+    console.error(error);
+    setSyncStatus(`<strong>加载失败：</strong>${escapeHtml(error?.message || '请检查 Supabase 配置或数据库视图')}`, true);
+  } finally {
+    if (requestId === inventoryRequestSeq) {
+      loading = false;
+      updatePaginationControls();
+    }
+  }
+}
+
+async function refreshInventory({ resetPage = false } = {}) {
+  if (resetPage) inventoryPage = 1;
+  await loadInventoryPage({ page: inventoryPage });
 }
 
 function getTodayMonthRange() {
@@ -187,26 +435,6 @@ function computePeriodStats() {
   };
 }
 
-function renderWorkbench() {
-  if (!workbenchGrid) return;
-  const lowCount = items.filter((i) => { const c = calc(i); return c.remaining > 0 && c.remaining <= 3; }).length;
-  const period = computePeriodStats();
-  const totalRemaining = items.reduce((sum, item) => sum + calc(item).remaining, 0);
-  const tiles = [
-    ['🛍️', '今日卖出', period.dayQty, '件数'],
-    ['💰', '本月利润', money(period.monthProfit), '自然月累计'],
-    ['⚠️', '低库存', lowCount, '需要关注'],
-    ['📦', '剩余库存', totalRemaining, '当前可售']
-  ];
-  workbenchGrid.innerHTML = tiles.map(([icon, label, value, sub]) => `
-    <div class="workbench-tile">
-      <div class="k"><span class="icon-inline">${icon}</span>${label}</div>
-      <div class="v">${value}</div>
-      <div class="s">${sub}</div>
-    </div>
-  `).join('');
-}
-
 function renderPeriodStats() {
   const p = computePeriodStats();
   const cards = [
@@ -224,6 +452,92 @@ function renderPeriodStats() {
       <div class="hint">${hint}</div>
     </div>
   `).join('');
+}
+
+function renderInventoryList() {
+  const keyword = normalizeSearchTerm(searchInput.value);
+  const list = inventoryPageRows;
+  if (emptyState) {
+    emptyState.style.display = list.length ? 'none' : 'block';
+  }
+  if (emptyStateTitle) {
+    emptyStateTitle.textContent = inventoryTotalCount ? '当前页没有符合条件的商品' : '还没有商品数据';
+  }
+  if (emptyStateText) {
+    emptyStateText.textContent = inventoryTotalCount
+      ? '试试调整搜索词、库存状态筛选或翻到其他页。'
+      : '先在上面录入一条试试。';
+  }
+
+  if (!inventoryList) return;
+  if (!list.length) {
+    inventoryList.innerHTML = '';
+    updatePaginationControls();
+    return;
+  }
+
+  inventoryList.innerHTML = list.map((item) => {
+    const c = calc(item);
+    const lowClass = c.remaining > 0 && c.remaining <= 3 ? 'low' : '';
+    return `
+      <details class="inventory-item">
+        <summary>
+          <div class="inventory-head">
+            <div class="inventory-name">${highlightKeyword(item.name, keyword)}</div>
+            <div class="inventory-sub">${highlightKeyword(item.category || '未分类', keyword)} · ${highlightKeyword(item.sku || '无 SKU', keyword)}</div>
+          </div>
+          <div class="inventory-side">
+            <div class="inventory-price">${money(c.sellPrice)}</div>
+            <div class="inventory-sub">当前售价</div>
+            <div class="inventory-remaining">${c.remaining}</div>
+            <div class="inventory-sub">${stockTag(c.remaining)}</div>
+          </div>
+        </summary>
+        <div class="inventory-body">
+          <div class="inventory-banner ${lowClass}">
+            <div>
+              <div class="inventory-sub">剩余库存</div>
+              <div class="big">${c.remaining}</div>
+            </div>
+            <div>${stockTag(c.remaining)}</div>
+          </div>
+          <div class="inventory-grid">
+            <div class="mini"><div class="k">分类</div><div class="v">${escapeHtml(item.category || '-')}</div></div>
+            <div class="mini"><div class="k">SKU</div><div class="v">${escapeHtml(item.sku || '-')}</div></div>
+            <div class="mini"><div class="k">进价</div><div class="v">${money(c.costPrice)}</div></div>
+            <div class="mini"><div class="k">售价</div><div class="v">${money(c.sellPrice)}</div></div>
+            <div class="mini"><div class="k">进货数量</div><div class="v">${c.quantity}</div></div>
+            <div class="mini"><div class="k">已售 / 剩余</div><div class="v">${c.soldQuantity} / ${c.remaining}</div></div>
+            <div class="mini"><div class="k">总成本</div><div class="v">${money(c.totalCost)}</div></div>
+            <div class="mini"><div class="k">已实现利润</div><div class="v ${c.realizedProfit >= 0 ? 'money pos' : 'money neg'}">${money(c.realizedProfit)}</div></div>
+          </div>
+          <div class="inventory-note">
+            供货渠道：${highlightKeyword(item.supplier || '-', keyword)}<br>
+            存放位置：${highlightKeyword(item.location || '-', keyword)}<br>
+            备注：${highlightKeyword(item.note || '-', keyword)}
+          </div>
+          <div class="actions">
+            <button class="primary" onclick="sellItem('${item.id}')">登记卖出</button>
+            <button class="secondary" onclick="editItem('${item.id}')">编辑</button>
+            <button class="danger" onclick="deleteItem('${item.id}')">删除</button>
+          </div>
+        </div>
+      </details>
+    `;
+  }).join('');
+
+  updatePaginationControls();
+}
+
+function render() {
+  updateSearchClearButton();
+  renderSearchMeta();
+  renderWorkbench();
+  renderStats();
+  renderLowStockAlert();
+  renderPeriodStats();
+  renderSaleRecords();
+  renderInventoryList();
 }
 
 function renderSaleRecords() {
@@ -254,22 +568,6 @@ function renderSaleRecords() {
       </table>
     </div>`;
 }
-
-function renderLowStockAlert() {
-  const low = items
-    .map(i=>({item:i,c:calc(i)}))
-    .filter(x=>x.c.remaining>0 && x.c.remaining<=3)
-    .sort((a,b)=>a.c.remaining-b.c.remaining);
-  if (!low.length) {
-    lowStockAlert.innerHTML = '<span class="tag">库存状态良好</span>';
-    return;
-  }
-  lowStockAlert.innerHTML = `
-    <div style="border:1px solid #fdba74;background:linear-gradient(180deg,#fff7ed,#fffbeb);border-radius:14px;padding:12px 14px;color:#9a3412;font-size:14px;box-shadow:0 8px 20px rgba(245,158,11,.10);">
-      <strong>⚠️ 低库存提醒：</strong>${low.map(x=>`${escapeHtml(x.item.name)}（剩 ${x.c.remaining}）`).join('、')}
-    </div>`;
-}
-
 
 function openSaleModal(id) {
   const item = items.find(i => i.id === id);
@@ -430,216 +728,68 @@ async function removeItem(id) {
   }
   if (editingId === id) resetForm();
   await applyQuickEntryMode();
-  await fetchAllData();
+  await refreshInventory();
 }
-
-function getFilteredItems() {
-  const keyword = searchInput.value.trim().toLowerCase();
-  const filter = stockFilter.value;
-  let list = items.filter(item => {
-    const c = calc(item);
-    const searchable = [item.name, item.category, item.sku, item.supplier, item.location, item.note].join(' ').toLowerCase();
-    const hitKeyword = !keyword || searchable.includes(keyword);
-    let hitFilter = true;
-    if (filter === 'inStock') hitFilter = c.remaining > 0;
-    if (filter === 'soldOut') hitFilter = c.remaining === 0;
-    if (filter === 'lowStock') hitFilter = c.remaining > 0 && c.remaining <= 3;
-    return hitKeyword && hitFilter;
-  });
-
-  const mode = sortFilter?.value || 'updated_desc';
-  list.sort((a, b) => {
-    const ca = calc(a);
-    const cb = calc(b);
-    if (mode === 'stock_asc') return ca.remaining - cb.remaining;
-    if (mode === 'profit_desc') return cb.realizedProfit - ca.realizedProfit;
-    if (mode === 'price_desc') return cb.sellPrice - ca.sellPrice;
-    return new Date(b.updated_at || 0) - new Date(a.updated_at || 0);
-  });
-  return list;
-}
-
-function updateSearchClearButton() {
-  if (!clearSearchBtn) return;
-  clearSearchBtn.classList.toggle('show', !!searchInput.value.trim());
-}
-
-function renderSearchMeta(list) {
-  const keyword = searchInput.value.trim();
-  if (!searchResultMeta) return;
-  if (!keyword) {
-    searchResultMeta.style.display = 'none';
-    searchResultMeta.textContent = '';
-    return;
-  }
-  searchResultMeta.style.display = 'block';
-  searchResultMeta.innerHTML = `🔎 找到 <strong>${list.length}</strong> 条结果 · 关键词：<strong>${escapeHtml(keyword)}</strong>`;
-}
-
-function renderStats() {
-  const list = getFilteredItems();
-  const totalProducts = list.length;
-  const totalUnits = list.reduce((sum, item) => sum + calc(item).quantity, 0);
-  const soldUnits = list.reduce((sum, item) => sum + calc(item).soldQuantity, 0);
-  const remainingUnits = list.reduce((sum, item) => sum + calc(item).remaining, 0);
-  const totalCost = list.reduce((sum, item) => sum + calc(item).totalCost, 0);
-  const realizedProfit = list.reduce((sum, item) => sum + calc(item).realizedProfit, 0);
-  const estimatedTotalProfit = list.reduce((sum, item) => { const c = calc(item); return sum + ((c.sellPrice - c.costPrice) * c.quantity); }, 0);
-  const remainingMarketValue = list.reduce((sum, item) => sum + calc(item).marketValue, 0);
-  const remainingSaleValue = list.reduce((sum, item) => sum + calc(item).potentialRevenue, 0);
-
-  const cards = [
-    ['商品种类', totalProducts, `共录入 ${totalProducts} 种商品`],
-    ['进货总数量', totalUnits, `已售 ${soldUnits}，剩余 ${remainingUnits}`],
-    ['总进货成本', money(totalCost), '按所有录入商品统计'],
-    ['已实现利润', money(realizedProfit), '已售数量对应的利润'],
-    ['总利润（预计）', money(estimatedTotalProfit), '按全部进货数量估算'],
-    ['剩余库存按市场价', money(remainingMarketValue), '市场价 × 剩余库存'],
-    ['剩余库存按售价', money(remainingSaleValue), '售价 × 剩余库存']
-  ];
-
-  stats.innerHTML = cards.map(([label, value, hint]) => `
-    <div class="stat">
-      <div class="label">${label}</div>
-      <div class="value">${value}</div>
-      <div class="hint">${hint}</div>
-    </div>
-  `).join('');
-}
-
 function stockTag(remaining) {
   if (remaining === 0) return '<span class="tag gray">已售空</span>';
   if (remaining <= 3) return '<span class="tag warn">低库存</span>';
   return '<span class="tag">有库存</span>';
 }
 
-function renderTable() {
-  const list = getFilteredItems();
-  emptyState.style.display = list.length ? 'none' : 'block';
-  tableBody.innerHTML = list.map(item => {
-    const c = calc(item);
-    return `
-      <tr>
-        <td>
-          <strong>${escapeHtml(item.name)}</strong><br>
-          <span style="color:#6b7280; font-size:14px;">${escapeHtml(item.supplier || '-')} · ${escapeHtml(item.location || '-')}</span>
-        </td>
-        <td>${escapeHtml(item.category || '-')}</td>
-        <td>${escapeHtml(item.sku || '-')}</td>
-        <td>${money(c.costPrice)}</td>
-        <td>${money(c.marketPrice)}</td>
-        <td>${money(c.sellPrice)}</td>
-        <td>${c.quantity}</td>
-        <td>${c.soldQuantity}</td>
-        <td>${c.remaining}<br>${stockTag(c.remaining)}</td>
-        <td>${money(c.totalCost)}</td>
-        <td class="money ${c.realizedProfit >= 0 ? 'pos' : 'neg'}">${money(c.realizedProfit)}</td>
-        <td>${percent(c.profitMargin)}</td>
-        <td>${escapeHtml(item.note || '-')}</td>
-        <td>
-          <div class="actions" style="margin-top:0;">
-            <button class="primary" onclick="sellItem('${item.id}')">登记卖出</button>
-            <button class="secondary" onclick="editItem('${item.id}')">编辑</button>
-            <button class="danger" onclick="deleteItem('${item.id}')">删除</button>
-          </div>
-        </td>
-      </tr>
-    `;
-  }).join('');
-}
-
-function renderMobile() {
-  const list = getFilteredItems();
-  const keyword = searchInput.value.trim();
-  mobileList.innerHTML = list.map(item => {
-    const c = calc(item);
-    const lowClass = c.remaining > 0 && c.remaining <= 3 ? 'low' : '';
-    return `
-      <div class="mobile-item">
-        <div class="mobile-item-header">
-          <div>
-            <h3>${highlightKeyword(item.name, keyword)}</h3>
-            <div class="mobile-item-sub">${highlightKeyword(item.category || '未分类', keyword)} · ${highlightKeyword(item.sku || '无 SKU', keyword)}</div>
-          </div>
-          <div style="text-align:right;">
-            <div class="mobile-item-price">${money(c.sellPrice)}</div>
-            <div class="mobile-item-sub">当前售价</div>
-          </div>
-        </div>
-        <div class="mobile-stock-banner ${lowClass}">
-          <div>
-            <div class="mobile-item-sub">剩余库存</div>
-            <div class="big">${c.remaining}</div>
-          </div>
-          <div>${stockTag(c.remaining)}</div>
-        </div>
-        <div class="mobile-meta">
-          <div class="mini"><div class="k">分类</div><div class="v">${escapeHtml(item.category || '-')}</div></div>
-          <div class="mini"><div class="k">SKU</div><div class="v">${escapeHtml(item.sku || '-')}</div></div>
-          <div class="mini"><div class="k">进价</div><div class="v">${money(c.costPrice)}</div></div>
-          <div class="mini"><div class="k">售价</div><div class="v">${money(c.sellPrice)}</div></div>
-          <div class="mini"><div class="k">进货数量</div><div class="v">${c.quantity}</div></div>
-          <div class="mini"><div class="k">已售 / 剩余</div><div class="v">${c.soldQuantity} / ${c.remaining}</div></div>
-          <div class="mini"><div class="k">总成本</div><div class="v">${money(c.totalCost)}</div></div>
-          <div class="mini"><div class="k">已实现利润</div><div class="v ${c.realizedProfit >= 0 ? 'money pos' : 'money neg'}">${money(c.realizedProfit)}</div></div>
-        </div>
-        <div style="font-size:14px; color:#6b7280; line-height:1.6; margin-bottom:10px;">
-          供货渠道：${highlightKeyword(item.supplier || '-', keyword)}<br>
-          存放位置：${highlightKeyword(item.location || '-', keyword)}<br>
-          备注：${highlightKeyword(item.note || '-', keyword)}
-        </div>
-        <div class="actions">
-          <button class="primary" onclick="sellItem('${item.id}')">登记卖出</button>
-          <button class="secondary" onclick="editItem('${item.id}')">编辑</button>
-          <button class="danger" onclick="deleteItem('${item.id}')">删除</button>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
-function render() {
-  const list = getFilteredItems();
-  updateSearchClearButton();
-  renderSearchMeta(list);
-  renderWorkbench();
-  renderStats();
-  renderLowStockAlert();
-  renderPeriodStats();
-  renderSaleRecords();
-  renderTable();
-  renderMobile();
+function getAllInventoryRowsForExport() {
+  const chunkSize = 1000;
+  return (async () => {
+    const rows = [];
+    let offset = 0;
+    while (true) {
+      const { data, error } = await supabaseClient
+        .from(INVENTORY_TABLE)
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .range(offset, offset + chunkSize - 1);
+      if (error) throw error;
+      const batch = data || [];
+      rows.push(...batch);
+      if (batch.length < chunkSize) break;
+      offset += chunkSize;
+    }
+    return rows;
+  })();
 }
 
 function exportCSV() {
-  if (!items.length) {
-    alert('当前没有数据可导出。');
-    return;
-  }
-  const rows = [[
-    '商品名称','分类','SKU','供货渠道','进价','市场价','售价','进货数量','已售数量','剩余库存','总成本','已实现利润','利润率','存放位置','备注','更新时间'
-  ]];
-  items.forEach(item => {
-    const c = calc(item);
-    rows.push([
-      item.name, item.category, item.sku, item.supplier,
-      c.costPrice, c.marketPrice, c.sellPrice,
-      c.quantity, c.soldQuantity, c.remaining,
-      c.totalCost, c.realizedProfit, c.profitMargin,
-      item.location, item.note, item.updated_at || ''
-    ]);
+  return getAllInventoryRowsForExport().then((allItems) => {
+    if (!allItems.length) {
+      alert('当前没有数据可导出。');
+      return;
+    }
+    const rows = [[
+      '商品名称','分类','SKU','供货渠道','进价','市场价','售价','进货数量','已售数量','剩余库存','总成本','已实现利润','利润率','存放位置','备注','更新时间'
+    ]];
+    allItems.forEach(item => {
+      const c = calc(item);
+      rows.push([
+        item.name, item.category, item.sku, item.supplier,
+        c.costPrice, c.marketPrice, c.sellPrice,
+        c.quantity, c.soldQuantity, c.remaining,
+        c.totalCost, c.realizedProfit, c.profitMargin,
+        item.location, item.note, item.updated_at || ''
+      ]);
+    });
+    const csv = '\uFEFF' + rows.map(row => row.map(value => {
+      const s = String(value ?? '');
+      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    }).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '库存数据导出.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }).catch((error) => {
+    alert('导出失败：' + (error?.message || '请检查 Supabase 配置'));
   });
-  const csv = '\uFEFF' + rows.map(row => row.map(value => {
-    const s = String(value ?? '');
-    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-  }).join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = '库存数据导出.csv';
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 function formatBackupFileName(date = new Date()) {
@@ -674,39 +824,62 @@ form.addEventListener('submit', async (e) => {
     return;
   }
   await applyQuickEntryMode();
-  await fetchAllData();
+  await refreshInventory({ resetPage: !editingId });
   resetForm();
 });
 
 resetBtn.addEventListener('click', () => { keepFormValuesForNext = false; resetForm(); });
 if (saveAndNextBtn) saveAndNextBtn.addEventListener('click', () => { keepFormValuesForNext = true; form.requestSubmit(); });
 if (quickEntryMode) quickEntryMode.addEventListener('change', applyQuickEntryMode);
-searchInput.addEventListener('input', () => { updateSearchClearButton(); render(); });
+searchInput.addEventListener('input', () => {
+  updateSearchClearButton();
+  clearTimeout(inventoryReloadTimer);
+  inventoryReloadTimer = setTimeout(() => {
+    refreshInventory({ resetPage: true });
+  }, 220);
+});
 
 searchInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
     e.preventDefault();
-    render();
+    clearTimeout(inventoryReloadTimer);
+    refreshInventory({ resetPage: true });
     scrollToSection('listSection', 96);
     searchInput.blur();
   }
 });
 
-stockFilter.addEventListener('change', render);
-if (clearSearchBtn) clearSearchBtn.addEventListener('click', () => { searchInput.value = ''; updateSearchClearButton(); render(); searchInput.focus(); });
-if (sortFilter) sortFilter.addEventListener('change', render);
+stockFilter.addEventListener('change', () => refreshInventory({ resetPage: true }));
+if (clearSearchBtn) clearSearchBtn.addEventListener('click', () => { searchInput.value = ''; updateSearchClearButton(); refreshInventory({ resetPage: true }); searchInput.focus(); });
+if (sortFilter) sortFilter.addEventListener('change', () => refreshInventory({ resetPage: true }));
+if (prevPageBtn) prevPageBtn.addEventListener('click', () => {
+  if (inventoryPage <= 1) return;
+  inventoryPage -= 1;
+  refreshInventory();
+});
+if (nextPageBtn) nextPageBtn.addEventListener('click', () => {
+  const totalPages = getInventoryPageCount();
+  if (totalPages && inventoryPage >= totalPages) return;
+  inventoryPage += 1;
+  refreshInventory();
+});
 exportBtn.addEventListener('click', exportCSV);
 
-backupBtn.addEventListener('click', () => {
-  const exportedAt = new Date().toISOString();
-  const payload = { version: 2, exportedAt, source: 'supabase', items, saleLogs };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = formatBackupFileName();
-  a.click();
-  URL.revokeObjectURL(url);
+backupBtn.addEventListener('click', async () => {
+  try {
+    const exportedAt = new Date().toISOString();
+    const allItems = await getAllInventoryRowsForExport();
+    const payload = { version: 3, exportedAt, source: 'supabase', items: allItems, saleLogs };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = formatBackupFileName();
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    alert('备份失败：' + (error?.message || '请检查 Supabase 配置'));
+  }
 });
 
 restoreBtn.addEventListener('click', () => restoreFile.click());
@@ -754,7 +927,7 @@ restoreFile.addEventListener('change', async (e) => {
     }
 
     await applyQuickEntryMode();
-    await fetchAllData();
+    await refreshInventory({ resetPage: true });
     resetForm();
     alert(`恢复成功：已导入 ${data.items.length} 条商品，${importedSales.length} 条卖出记录。`);
   } catch (err) {
@@ -815,19 +988,18 @@ saleForm.addEventListener('submit', async (e) => {
   }
 
   await applyQuickEntryMode();
-  await fetchAllData();
+  await refreshInventory();
   closeSaleModal();
 });
 
 clearAllBtn.addEventListener('click', async () => {
-  if (!items.length && !saleLogs.length) return alert('当前没有数据。');
   if (!confirm('确定清空云端全部商品和卖出记录吗？此操作会删除 Supabase 里的库存数据。')) return;
   const { error: delSalesError } = await supabaseClient.from('sales').delete().gte('sold_at', '1900-01-01T00:00:00Z');
   if (delSalesError) return alert('清空卖出记录失败：' + delSalesError.message);
   const { error: delItemsError } = await supabaseClient.from('items').delete().gte('updated_at', '1900-01-01T00:00:00Z');
   if (delItemsError) return alert('清空商品失败：' + delItemsError.message);
   await applyQuickEntryMode();
-  await fetchAllData();
+  await refreshInventory({ resetPage: true });
   resetForm();
 });
 
@@ -864,7 +1036,7 @@ if (quickSalesBtn) quickSalesBtn.addEventListener('click', () => scrollToSection
 
 applyQuickEntryMode();
 updateSearchClearButton();
-fetchAllData();
+refreshInventory({ resetPage: true });
 
 document.addEventListener('focusin', (e) => {
   if (isEditableTarget(e.target)) setQuickActionsVisibilityByInput(true);

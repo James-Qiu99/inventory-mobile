@@ -197,22 +197,42 @@
     .tag.gray { background: #f3f4f6; color: #4b5563; }
 
     .mobile-list { display: none; gap: 12px; }
-    .mobile-item {
+    .inventory-list {
+      display: grid;
+      gap: 12px;
+    }
+    .inventory-item {
       border: 1px solid #dbeafe;
       border-radius: 20px;
       padding: 14px;
       background: linear-gradient(180deg, #ffffff, #f8fbff);
       box-shadow: 0 10px 24px rgba(37,99,235,.08);
     }
-    .mobile-item h3 { margin: 0; font-size: 19px; }
-    .mobile-item-header { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:10px; }
-    .mobile-item-price { font-size: 24px; font-weight: 800; color: #111827; line-height: 1.1; }
-    .mobile-item-sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    .inventory-item > summary {
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:10px;
+      cursor:pointer;
+      list-style:none;
+    }
+    .inventory-item > summary::-webkit-details-marker { display: none; }
+    .inventory-head { min-width: 0; flex: 1 1 auto; }
+    .inventory-name { margin: 0; font-size: 19px; font-weight: 800; line-height: 1.3; word-break: break-word; }
+    .inventory-sub { font-size: 13px; color: var(--muted); margin-top: 4px; line-height: 1.5; word-break: break-word; }
+    .inventory-side { display:flex; flex-direction:column; align-items:flex-end; gap:6px; flex: 0 0 auto; text-align:right; }
+    .inventory-price { font-size: 24px; font-weight: 800; color: #111827; line-height: 1.1; }
+    .inventory-remaining { font-size: 22px; font-weight: 800; line-height: 1; }
+    .inventory-body {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(219,234,254,.8);
+    }
     .icon-inline { font-size: 14px; opacity: .9; }
-    .mobile-stock-banner { display:flex; align-items:center; justify-content:space-between; gap:10px; padding: 11px 12px; border-radius: 14px; background:#eff6ff; border:1px solid #dbeafe; margin-bottom:10px; }
-    .mobile-stock-banner.low { background:#fff7ed; border-color:#fdba74; box-shadow: inset 0 0 0 1px rgba(249,115,22,.08); }
-    .mobile-stock-banner .big { font-size: 22px; font-weight: 800; }
-    .mobile-meta {
+    .inventory-banner { display:flex; align-items:center; justify-content:space-between; gap:10px; padding: 11px 12px; border-radius: 14px; background:#eff6ff; border:1px solid #dbeafe; margin-bottom:10px; }
+    .inventory-banner.low { background:#fff7ed; border-color:#fdba74; box-shadow: inset 0 0 0 1px rgba(249,115,22,.08); }
+    .inventory-banner .big { font-size: 22px; font-weight: 800; }
+    .inventory-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 8px;
@@ -225,6 +245,28 @@
     }
     .mini .k { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
     .mini .v { font-size: 15px; font-weight: 700; word-break: break-word; }
+    .inventory-note {
+      font-size: 14px;
+      color: #4b5563;
+      line-height: 1.65;
+      margin-bottom: 10px;
+      word-break: break-word;
+    }
+    .pagination-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-top: 12px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255,255,255,.82);
+      color: #374151;
+    }
+    .pagination-info { font-size: 14px; color: var(--muted); line-height: 1.5; }
+    .pagination-actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .pagination-actions button:disabled { opacity: .45; cursor: not-allowed; }
     .empty {
       text-align: center;
       color: var(--muted);
@@ -385,6 +427,7 @@
       .toolbar input, .toolbar select, .toolbar button, .toolbar .button { width: 100%; }
       .table-wrap { display: none; }
       .mobile-list { display: grid; }
+      .inventory-grid { grid-template-columns: 1fr 1fr; }
       .hero h1 { font-size: 28px; }
       body { padding: 12px 12px 96px; }
       .card { padding: 14px; }
@@ -406,6 +449,8 @@
       .modal { padding: 16px 16px 24px; border-radius: 22px 22px 0 0; }
       .qty-chip { flex: 1 1 calc(50% - 8px); justify-content: center; }
       #saveAndNextBtn { width: 100%; }
+      .pagination-bar { flex-direction: column; align-items: stretch; }
+      .pagination-actions button { flex: 1 1 0; }
     }
   </style>
 </head>
@@ -554,31 +599,15 @@
         </div>
       </div>
 
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>商品</th>
-              <th>分类</th>
-              <th>SKU</th>
-              <th>进价</th>
-              <th>市场价</th>
-              <th>售价</th>
-              <th>进货数量</th>
-              <th>已售</th>
-              <th>剩余库存</th>
-              <th>总成本</th>
-              <th>已实现利润</th>
-              <th>利润率</th>
-              <th>备注</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody id="tableBody"></tbody>
-        </table>
+      <div class="pagination-bar">
+        <div id="pageInfo" class="pagination-info">第 1 / 1 页 · 共 0 条</div>
+        <div class="pagination-actions">
+          <button type="button" class="ghost" id="prevPageBtn">上一页</button>
+          <button type="button" class="ghost" id="nextPageBtn">下一页</button>
+        </div>
       </div>
 
-      <div id="mobileList" class="mobile-list"></div>
+      <div id="inventoryList" class="inventory-list" style="margin-top:12px;"></div>
       <div id="emptyState" class="empty" style="display:none; margin-top: 12px;">
         <div style="font-size:32px; margin-bottom:8px;">📭</div>
         <div id="emptyStateTitle" style="font-weight:800; color:#111827; margin-bottom:6px;">还没有商品数据</div>

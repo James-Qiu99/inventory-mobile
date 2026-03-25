@@ -38,6 +38,8 @@
 
 - `items`
 - `sales`
+- `inventory_items` 视图
+- `inventory_summary()` 统计函数
 
 并启用一个最简单的公开读写策略，方便当前静态网页直接访问。
 
