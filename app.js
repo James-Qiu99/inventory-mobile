@@ -52,6 +52,7 @@ const quickActions = document.querySelector('.quick-actions');
 const quickAddBtn = document.getElementById('quickAddBtn');
 const quickListBtn = document.getElementById('quickListBtn');
 const quickSalesBtn = document.getElementById('quickSalesBtn');
+const quickTopBtn = document.getElementById('quickTopBtn');
 const categoryChips = [...document.querySelectorAll('.category-chip')];
 const qtyChips = [...document.querySelectorAll('.qty-chip')];
 const entryReadyBanner = document.getElementById('entryReadyBanner');
@@ -329,17 +330,17 @@ function renderWorkbench() {
   const totalRemaining = toNumber(summary.remaining_units);
   const lowCount = toNumber(summary.low_stock_count);
   const tiles = [
-    ['🛍️', '今日卖出', period.dayQty, '件数'],
-    ['💰', '本月利润', money(period.monthProfit), '自然月累计'],
-    ['⚠️', '低库存', lowCount, '需要关注'],
-    ['📦', '剩余库存', totalRemaining, '当前可售']
+    ['🛍️', '今日卖出', period.dayQty, '件数', 'salesCard'],
+    ['💰', '本月利润', money(period.monthProfit), '自然月累计', 'salesStatsCard'],
+    ['⚠️', '低库存', lowCount, '需要关注', 'lowStockAnchor'],
+    ['📦', '剩余库存', totalRemaining, '当前可售', 'listSection']
   ];
-  workbenchGrid.innerHTML = tiles.map(([icon, label, value, sub]) => `
-    <div class="workbench-tile">
+  workbenchGrid.innerHTML = tiles.map(([icon, label, value, sub, target]) => `
+    <button class="workbench-tile" type="button" data-target="${target}">
       <div class="k"><span class="icon-inline">${icon}</span>${label}</div>
       <div class="v">${value}</div>
       <div class="s">${sub}</div>
-    </div>
+    </button>
   `).join('');
 }
 
@@ -1194,6 +1195,12 @@ qtyChips.forEach((chip) => {
 if (quickAddBtn) quickAddBtn.addEventListener('click', () => scrollToSection('formSection'));
 if (quickListBtn) quickListBtn.addEventListener('click', () => scrollToAnchoredSection('listSection'));
 if (quickSalesBtn) quickSalesBtn.addEventListener('click', () => scrollToAnchoredSection('salesCard'));
+if (quickTopBtn) quickTopBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+if (workbenchGrid) workbenchGrid.addEventListener('click', (event) => {
+  const trigger = event.target.closest('[data-target]');
+  if (!trigger) return;
+  scrollToAnchoredSection(trigger.dataset.target);
+});
 
 applyQuickEntryMode();
 updateSearchClearButton();
