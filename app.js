@@ -59,6 +59,16 @@ function scrollToSection(id, offset = 0) {
   window.scrollTo({ top, behavior: 'smooth' });
 }
 
+function getStickySearchOffset(extra = 14) {
+  const stickySearch = document.querySelector('.global-sticky-search');
+  const stickyHeight = stickySearch?.getBoundingClientRect().height || 0;
+  return stickyHeight + extra;
+}
+
+function scrollToAnchoredSection(id, extra = 14) {
+  scrollToSection(id, getStickySearchOffset(extra));
+}
+
 function setQuickActionsVisibilityByInput(active) {
   if (!quickActions) return;
   quickActions.classList.toggle('hidden-by-input', !!active);
@@ -282,18 +292,14 @@ function updateSearchClearButton() {
 function renderSearchMeta() {
   if (!searchResultMeta) return;
   const keyword = normalizeSearchTerm(searchInput.value);
-  const totalPages = getInventoryPageCount();
-  if (!keyword && !inventoryTotalCount) {
+  if (!keyword) {
     searchResultMeta.style.display = 'none';
     searchResultMeta.textContent = '';
     return;
   }
 
   searchResultMeta.style.display = 'block';
-  const parts = [];
-  if (keyword) parts.push(`关键词：<strong>${escapeHtml(keyword)}</strong>`);
-  parts.push(`匹配 <strong>${inventoryTotalCount}</strong> 条`);
-  searchResultMeta.innerHTML = `🔎 ${parts.join(' · ')}`;
+  searchResultMeta.innerHTML = `🔎 关键词：<strong>${escapeHtml(keyword)}</strong> · 匹配 <strong>${inventoryTotalCount}</strong> 条`;
 }
 
 function renderWorkbench() {
@@ -935,7 +941,7 @@ searchInput.addEventListener('keydown', (e) => {
     e.preventDefault();
     clearTimeout(inventoryReloadTimer);
     refreshInventory({ resetPage: true });
-    scrollToSection('listSection', 96);
+    scrollToAnchoredSection('listSection');
     searchInput.blur();
   }
 });
@@ -947,12 +953,14 @@ if (prevPageBtn) prevPageBtn.addEventListener('click', () => {
   if (inventoryPage <= 1) return;
   inventoryPage -= 1;
   refreshInventory();
+  scrollToAnchoredSection('listSection');
 });
 if (nextPageBtn) nextPageBtn.addEventListener('click', () => {
   const totalPages = getInventoryPageCount();
   if (totalPages && inventoryPage >= totalPages) return;
   inventoryPage += 1;
   refreshInventory();
+  scrollToAnchoredSection('listSection');
 });
 exportBtn.addEventListener('click', exportCSV);
 
@@ -1122,8 +1130,8 @@ qtyChips.forEach((chip) => {
 });
 
 if (quickAddBtn) quickAddBtn.addEventListener('click', () => scrollToSection('formSection'));
-if (quickListBtn) quickListBtn.addEventListener('click', () => scrollToSection('listSection'));
-if (quickSalesBtn) quickSalesBtn.addEventListener('click', () => scrollToSection('salesSection'));
+if (quickListBtn) quickListBtn.addEventListener('click', () => scrollToAnchoredSection('listSection'));
+if (quickSalesBtn) quickSalesBtn.addEventListener('click', () => scrollToAnchoredSection('salesCard'));
 
 applyQuickEntryMode();
 updateSearchClearButton();
