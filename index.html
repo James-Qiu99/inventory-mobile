@@ -324,6 +324,8 @@
     .quick-entry-switch { margin-top:12px; padding:12px; border-radius:14px; background:#f8fafc; border:1px solid #e2e8f0; }
     .form-steps { margin-top:12px; border:1px solid var(--line); border-radius:16px; padding:12px; background:#fcfcfd; }
     .form-steps summary { cursor:pointer; font-weight:700; color:#111827; }
+    .entry-toast { position: sticky; top: 10px; z-index: 40; display:none; margin-top:12px; padding:10px 12px; border-radius:999px; background:rgba(15,118,110,.96); color:#fff; font-size:13px; font-weight:700; text-align:center; box-shadow:0 10px 24px rgba(15,118,110,.18); }
+    .field-highlight input { border-color: #2563eb !important; box-shadow: 0 0 0 5px rgba(37,99,235,.14) !important; background:#f8fbff !important; }
 
     @media (max-width: 900px) {
       .grid.top { grid-template-columns: 1fr; }
@@ -383,7 +385,7 @@
     <section class="grid top">
       <div class="card section-anchor" id="formSection">
         <h2 id="formTitle">新增商品</h2>
-        <div id="entryReadyBanner" style="display:none; margin-top:12px; padding:12px 14px; border-radius:14px; background:#ecfeff; border:1px solid #a5f3fc; color:#0f766e; font-size:14px; font-weight:700;">已保存，继续录入下一条 👌 请直接填写商品名称</div>
+        <div id="entryReadyBanner" class="entry-toast">已保存，继续录入下一条</div>
         <div class="compact-note">建议在 iPhone 上优先填写：商品名称、售价、进货数量；其他字段可以后补。</div>
         <div class="quick-entry-switch">
           <label style="display:flex;align-items:center;gap:8px;color:#111827;font-weight:700;">

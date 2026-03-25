@@ -253,7 +253,17 @@ function flashEntryReadyBanner() {
   clearTimeout(flashEntryReadyBanner._timer);
   flashEntryReadyBanner._timer = setTimeout(() => {
     entryReadyBanner.style.display = 'none';
-  }, 2200);
+  }, 1600);
+}
+
+function flashNameField() {
+  const nameField = document.getElementById('name')?.closest('.field');
+  if (!nameField) return;
+  nameField.classList.add('field-highlight');
+  clearTimeout(flashNameField._timer);
+  flashNameField._timer = setTimeout(() => {
+    nameField.classList.remove('field-highlight');
+  }, 1800);
 }
 
 function applyQuickEntryMode() {
@@ -273,6 +283,7 @@ function applyQuickEntryMode() {
 function resetForm() {
   const previousCategory = document.getElementById('category').value;
   const previousLocation = document.getElementById('location').value;
+  const previousSupplier = document.getElementById('supplier').value;
   form.reset();
   editingId = null;
   formTitle.textContent = '新增商品';
@@ -281,12 +292,14 @@ function resetForm() {
   if (keepFormValuesForNext) {
     document.getElementById('category').value = previousCategory || '';
     document.getElementById('location').value = previousLocation || '';
+    document.getElementById('supplier').value = previousSupplier || '';
     setActiveCategoryChip(previousCategory || '');
     keepFormValuesForNext = false;
     setTimeout(() => {
       if (primaryFieldsBlock) primaryFieldsBlock.setAttribute('open', 'open');
       scrollToSection('formSection');
       flashEntryReadyBanner();
+      flashNameField();
       const nameInput = document.getElementById('name');
       if (nameInput) {
         nameInput.focus();
