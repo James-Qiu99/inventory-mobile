@@ -1,7 +1,8 @@
 const SUPABASE_URL = window.SUPABASE_URL || 'https://YOUR_PROJECT.supabase.co';
 const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_KEY';
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-const INVENTORY_PAGE_SIZE = 20;
+const INVENTORY_PAGE_SIZE = 15;
+const SALES_PAGE_SIZE = 15;
 const INVENTORY_TABLE = 'items';
 
 const form = document.getElementById('itemForm');
@@ -44,6 +45,9 @@ const emptyStateText = document.getElementById('emptyStateText');
 const pageInfo = document.getElementById('pageInfo');
 const prevPageBtn = document.getElementById('prevPageBtn');
 const nextPageBtn = document.getElementById('nextPageBtn');
+const salesPageInfo = document.getElementById('salesPageInfo');
+const prevSalesPageBtn = document.getElementById('prevSalesPageBtn');
+const nextSalesPageBtn = document.getElementById('nextSalesPageBtn');
 const quickActions = document.querySelector('.quick-actions');
 const quickAddBtn = document.getElementById('quickAddBtn');
 const quickListBtn = document.getElementById('quickListBtn');
@@ -95,6 +99,7 @@ let inventoryLowStock = [];
 let inventoryRequestSeq = 0;
 let inventoryReloadTimer = null;
 let inventoryMode = 'server';
+let salesPage = 1;
 
 function toNumber(value) {
   const n = Number(value);
@@ -170,6 +175,10 @@ function normalizeSearchTerm(value = '') {
 
 function getInventoryPageCount(totalCount = inventoryTotalCount) {
   return totalCount > 0 ? Math.max(1, Math.ceil(totalCount / INVENTORY_PAGE_SIZE)) : 0;
+}
+
+function getSalesPageCount(totalCount = saleLogs.length) {
+  return totalCount > 0 ? Math.max(1, Math.ceil(totalCount / SALES_PAGE_SIZE)) : 0;
 }
 
 function buildFallbackInventorySummary(rows = inventoryPageRows) {
@@ -282,6 +291,17 @@ function updatePaginationControls() {
   }
   if (prevPageBtn) prevPageBtn.disabled = loading || inventoryPage <= 1 || totalPages === 0;
   if (nextPageBtn) nextPageBtn.disabled = loading || inventoryPage >= totalPages || totalPages === 0;
+}
+
+function updateSalesPaginationControls() {
+  const totalPages = getSalesPageCount();
+  if (salesPageInfo) {
+    salesPageInfo.textContent = totalPages
+      ? `共 ${saleLogs.length} 条`
+      : '暂无卖出记录';
+  }
+  if (prevSalesPageBtn) prevSalesPageBtn.disabled = loading || salesPage <= 1 || totalPages === 0;
+  if (nextSalesPageBtn) nextSalesPageBtn.disabled = loading || salesPage >= totalPages || totalPages === 0;
 }
 
 function updateSearchClearButton() {
@@ -641,9 +661,17 @@ function renderSaleRecords() {
   if (!saleLogs.length) {
     saleRecords.className = 'empty';
     saleRecords.textContent = '暂无卖出记录。';
+    updateSalesPaginationControls();
     return;
   }
-  const rows = [...saleLogs].sort((a,b)=>new Date(b.sold_at)-new Date(a.sold_at)).slice(0,20);
+  const totalPages = getSalesPageCount();
+  if (totalPages && salesPage > totalPages) {
+    salesPage = totalPages;
+  }
+  const start = (Math.max(1, salesPage) - 1) * SALES_PAGE_SIZE;
+  const rows = [...saleLogs]
+    .sort((a,b)=>new Date(b.sold_at)-new Date(a.sold_at))
+    .slice(start, start + SALES_PAGE_SIZE);
   saleRecords.className = '';
   saleRecords.innerHTML = `
     <div class="sale-mobile-list">
@@ -683,6 +711,7 @@ function renderSaleRecords() {
         </tbody>
       </table>
     </div>`;
+  updateSalesPaginationControls();
 }
 
 function openSaleModal(id) {
@@ -980,6 +1009,19 @@ if (nextPageBtn) nextPageBtn.addEventListener('click', () => {
   inventoryPage += 1;
   refreshInventory();
   scrollToAnchoredSection('listSection');
+});
+if (prevSalesPageBtn) prevSalesPageBtn.addEventListener('click', () => {
+  if (salesPage <= 1) return;
+  salesPage -= 1;
+  renderSaleRecords();
+  scrollToAnchoredSection('salesCard');
+});
+if (nextSalesPageBtn) nextSalesPageBtn.addEventListener('click', () => {
+  const totalPages = getSalesPageCount();
+  if (totalPages && salesPage >= totalPages) return;
+  salesPage += 1;
+  renderSaleRecords();
+  scrollToAnchoredSection('salesCard');
 });
 exportBtn.addEventListener('click', exportCSV);
 
