@@ -82,6 +82,7 @@ let inventorySummary = null;
 let inventoryLowStock = [];
 let inventoryRequestSeq = 0;
 let inventoryReloadTimer = null;
+let inventoryMode = 'server';
 
 function toNumber(value) {
   const n = Number(value);
@@ -179,6 +180,40 @@ function getInventorySummary() {
   return inventorySummary || buildFallbackInventorySummary();
 }
 
+function getFilteredAndSortedItems(sourceItems = items) {
+  const keyword = normalizeSearchTerm(searchInput.value).toLowerCase();
+  const filter = stockFilter?.value || 'all';
+  let list = sourceItems.filter((item) => {
+    const c = calc(item);
+    const searchable = [item.name, item.category, item.sku, item.supplier, item.location, item.note]
+      .join(' ')
+      .toLowerCase();
+    const hitKeyword = !keyword || searchable.includes(keyword);
+    let hitFilter = true;
+    if (filter === 'inStock') hitFilter = c.remaining > 0;
+    if (filter === 'soldOut') hitFilter = c.remaining === 0;
+    if (filter === 'lowStock') hitFilter = c.remaining > 0 && c.remaining <= 3;
+    return hitKeyword && hitFilter;
+  });
+
+  const mode = sortFilter?.value || 'updated_desc';
+  list.sort((a, b) => {
+    const ca = calc(a);
+    const cb = calc(b);
+    if (mode === 'stock_asc') return ca.remaining - cb.remaining;
+    if (mode === 'profit_desc') return cb.realizedProfit - ca.realizedProfit;
+    if (mode === 'price_desc') return cb.sellPrice - ca.sellPrice;
+    return new Date(b.updated_at || 0) - new Date(a.updated_at || 0);
+  });
+  return list;
+}
+
+function getFallbackPageRows(sourceItems = items, page = inventoryPage) {
+  const filtered = getFilteredAndSortedItems(sourceItems);
+  const start = (Math.max(1, page) - 1) * INVENTORY_PAGE_SIZE;
+  return filtered.slice(start, start + INVENTORY_PAGE_SIZE);
+}
+
 function buildInventoryQuery() {
   let query = supabaseClient.from(INVENTORY_TABLE).select('*', { count: 'exact' });
   const keyword = normalizeSearchTerm(searchInput.value);
@@ -237,6 +272,42 @@ async function fetchLowStockPreview() {
     .limit(3);
   if (error) throw error;
   inventoryLowStock = data || [];
+}
+
+async function loadInventoryFallback(reason = 'query_failed') {
+  const [{ data: itemsData, error: itemsError }, { data: salesData, error: salesError }] = await Promise.all([
+    supabaseClient.from('items').select('*').order('updated_at', { ascending: false }),
+    supabaseClient.from('sales').select('*').order('sold_at', { ascending: false })
+  ]);
+
+  if (itemsError || salesError) {
+    throw itemsError || salesError;
+  }
+
+  const allItems = itemsData || [];
+  items = allItems;
+  saleLogs = salesData || [];
+  inventoryMode = 'fallback';
+  inventorySummary = buildFallbackInventorySummary(allItems);
+  inventoryLowStock = allItems
+    .map((item) => ({ item, c: calc(item) }))
+    .filter((x) => x.c.remaining > 0 && x.c.remaining <= 3)
+    .sort((a, b) => a.c.remaining - b.c.remaining)
+    .slice(0, 3)
+    .map(({ item, c }) => ({ id: item.id, name: item.name, remaining: c.remaining }));
+  inventoryTotalCount = getFilteredAndSortedItems(allItems).length;
+  inventoryPageRows = getFallbackPageRows(allItems, inventoryPage);
+  render();
+  const summary = getInventorySummary();
+  const totalPages = getInventoryPageCount();
+  setSyncStatus([
+    `<strong>云端库存：</strong>${inventoryTotalCount} 条`,
+    `<strong>当前页：</strong>${totalPages ? `${inventoryPage}/${totalPages}` : '0/0'}`,
+    `<strong>剩余库存：</strong>${toNumber(summary.remaining_units)} 件`,
+    `<strong>卖出记录：</strong>${saleLogs.length} 条`,
+    `<strong>模式：</strong>已切换到兼容加载`
+  ].join('｜'), true);
+  return reason;
 }
 
 function updatePaginationControls() {
@@ -377,6 +448,10 @@ async function loadInventoryPage({ page = inventoryPage, keepPage = true } = {})
     items = inventoryPageRows;
     inventoryTotalCount = pageResp.count || 0;
 
+    if (!inventoryPageRows.length && page === 1 && toNumber(getInventorySummary().total_products) > 0 && !normalizeSearchTerm(searchInput.value)) {
+      return loadInventoryFallback('empty_page_with_data');
+    }
+
     const totalPages = getInventoryPageCount();
     if (totalPages && inventoryPage > totalPages) {
       loading = false;
@@ -390,12 +465,18 @@ async function loadInventoryPage({ page = inventoryPage, keepPage = true } = {})
       `<strong>云端库存：</strong>${inventoryTotalCount} 条`,
       `<strong>当前页：</strong>${currentPageLabel}`,
       `<strong>剩余库存：</strong>${toNumber(summary.remaining_units)} 件`,
-      `<strong>卖出记录：</strong>${saleLogs.length} 条`
+      `<strong>卖出记录：</strong>${saleLogs.length} 条`,
+      `<strong>模式：</strong>服务端分页`
     ];
     setSyncStatus(syncParts.join('｜'));
   } catch (error) {
     console.error(error);
-    setSyncStatus(`<strong>加载失败：</strong>${escapeHtml(error?.message || '请检查 Supabase 配置或数据库视图')}`, true);
+    try {
+      await loadInventoryFallback(error?.message || 'query_failed');
+    } catch (fallbackError) {
+      console.error(fallbackError);
+      setSyncStatus(`<strong>加载失败：</strong>${escapeHtml(fallbackError?.message || '请检查 Supabase 配置或数据库视图')}`, true);
+    }
   } finally {
     if (requestId === inventoryRequestSeq) {
       loading = false;
