@@ -119,17 +119,17 @@
     .stats {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
+      gap: 12px;
     }
     .stat {
       border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 12px;
+      border-radius: 16px;
+      padding: 14px;
       background: linear-gradient(180deg, #fff, #fafafa);
     }
-    .stat .label { font-size: 14px; color: var(--muted); margin-bottom: 6px; display:flex; align-items:center; gap:6px; }
-    .stat .value { font-size: 24px; font-weight: 800; line-height: 1.15; }
-    .stat .hint { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.45; }
+    .stat .label { font-size: 15px; color: var(--muted); margin-bottom: 7px; display:flex; align-items:center; gap:6px; }
+    .stat .value { font-size: 28px; font-weight: 800; line-height: 1.15; }
+    .stat .hint { font-size: 13px; color: var(--muted); margin-top: 5px; line-height: 1.45; }
 
     .toolbar {
       justify-content: space-between;
@@ -378,10 +378,10 @@
       .hero { padding: 18px; border-radius: 22px; }
       .hero p { font-size: 16px; }
       .card h2 { font-size: 22px; }
-      .stat { padding: 10px; border-radius: 12px; }
-      .stat .label { font-size: 13px; margin-bottom: 4px; }
-      .stat .value { font-size: 20px; }
-      .stat .hint { font-size: 11px; }
+      .stat { padding: 12px; border-radius: 14px; }
+      .stat .label { font-size: 14px; margin-bottom: 5px; }
+      .stat .value { font-size: 24px; }
+      .stat .hint { font-size: 12px; }
       .sync-status { font-size: 13px; }
       .mobile-meta { grid-template-columns: 1fr 1fr; }
       .mobile-priority { display: block; }
@@ -513,13 +513,6 @@
         <h2>📊 总览统计</h2>
         <div class="stats" id="stats"></div>
         <div id="lowStockAlert" style="margin-top:12px;"></div>
-        <div class="footer-note">
-          <div>说明：</div>
-          <div>- 预计总成本 = 进价 × 进货数量</div>
-          <div>- 剩余库存 = 进货数量 - 已售数量</div>
-          <div>- 已实现利润 = (售价 - 进价) × 已售数量</div>
-          <div>- 剩余库存价值 = 售价 × 剩余库存</div>
-        </div>
       </div>
     </section>
 
