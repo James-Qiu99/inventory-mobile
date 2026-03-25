@@ -18,7 +18,6 @@ const searchInput = document.getElementById('searchInput');
 const stockFilter = document.getElementById('stockFilter');
 const sortFilter = document.getElementById('sortFilter');
 const exportBtn = document.getElementById('exportBtn');
-const sampleBtn = document.getElementById('sampleBtn');
 const backupBtn = document.getElementById('backupBtn');
 const restoreBtn = document.getElementById('restoreBtn');
 const restoreFile = document.getElementById('restoreFile');
@@ -596,32 +595,6 @@ function formatBackupFileName(date = new Date()) {
   return `库存备份-${y}${m}${d}-${hh}${mm}${ss}.json`;
 }
 
-async function loadSampleData() {
-  if (!confirm('导入示例数据会写入云端数据库。继续吗？')) return;
-
-  const sampleItems = [
-    {
-      id: crypto.randomUUID(), name: '蓝牙耳机', category: '数码配件', sku: 'BT-001', supplier: '华强北渠道A',
-      cost_price: 89, market_price: 159, sell_price: 139, quantity: 20, sold_quantity: 8,
-      location: '货架 A1', note: '黑色款卖得更快', updated_at: new Date().toISOString()
-    },
-    {
-      id: crypto.randomUUID(), name: '保温杯', category: '日用品', sku: 'CUP-018', supplier: '义乌供货商',
-      cost_price: 22, market_price: 49, sell_price: 39, quantity: 30, sold_quantity: 27,
-      location: '货架 B2', note: '剩 3 个，考虑补货', updated_at: new Date().toISOString()
-    }
-  ];
-
-  const { error } = await supabaseClient.from('items').insert(sampleItems);
-  if (error) {
-    alert('导入示例数据失败：' + error.message);
-    return;
-  }
-  await applyQuickEntryMode();
-  await fetchAllData();
-  resetForm();
-}
-
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const data = getFormData();
@@ -654,7 +627,6 @@ searchInput.addEventListener('input', render);
 stockFilter.addEventListener('change', render);
 if (sortFilter) sortFilter.addEventListener('change', render);
 exportBtn.addEventListener('click', exportCSV);
-sampleBtn.addEventListener('click', loadSampleData);
 
 backupBtn.addEventListener('click', () => {
   const exportedAt = new Date().toISOString();
