@@ -34,6 +34,7 @@ const lowStockAlert = document.getElementById('lowStockAlert');
 const periodStats = document.getElementById('periodStats');
 const saleRecords = document.getElementById('saleRecords');
 const workbenchGrid = document.getElementById('workbenchGrid');
+const searchResultMeta = document.getElementById('searchResultMeta');
 const quickActions = document.querySelector('.quick-actions');
 const quickAddBtn = document.getElementById('quickAddBtn');
 const quickListBtn = document.getElementById('quickListBtn');
@@ -88,6 +89,19 @@ function escapeHtml(str = '') {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
+
+function escapeRegExp(str = '') {
+  return String(str).replace(/[.*+?^${}()|[\]\]/g, '\\$&');
+}
+
+function highlightKeyword(text, keyword) {
+  const safeText = escapeHtml(text || '');
+  const q = String(keyword || '').trim();
+  if (!q) return safeText;
+  const re = new RegExp(`(${escapeRegExp(q)})`, 'ig');
+  return safeText.replace(re, '<mark style="background:#fef3c7;color:#92400e;padding:0 2px;border-radius:4px;">$1</mark>');
+}
+
 
 function calc(item) {
   const costPrice = toNumber(item.cost_price);
@@ -441,6 +455,18 @@ function getFilteredItems() {
   return list;
 }
 
+function renderSearchMeta(list) {
+  const keyword = searchInput.value.trim();
+  if (!searchResultMeta) return;
+  if (!keyword) {
+    searchResultMeta.style.display = 'none';
+    searchResultMeta.textContent = '';
+    return;
+  }
+  searchResultMeta.style.display = 'block';
+  searchResultMeta.innerHTML = `找到 <strong>${list.length}</strong> 条结果 · 关键词：<strong>${escapeHtml(keyword)}</strong>`;
+}
+
 function renderStats() {
   const list = getFilteredItems();
   const totalProducts = list.length;
@@ -515,6 +541,7 @@ function renderTable() {
 
 function renderMobile() {
   const list = getFilteredItems();
+  const keyword = searchInput.value.trim();
   mobileList.innerHTML = list.map(item => {
     const c = calc(item);
     const lowClass = c.remaining > 0 && c.remaining <= 3 ? 'low' : '';
@@ -522,8 +549,8 @@ function renderMobile() {
       <div class="mobile-item">
         <div class="mobile-item-header">
           <div>
-            <h3>${escapeHtml(item.name)}</h3>
-            <div class="mobile-item-sub">${escapeHtml(item.category || '未分类')} · ${escapeHtml(item.sku || '无 SKU')}</div>
+            <h3>${highlightKeyword(item.name, keyword)}</h3>
+            <div class="mobile-item-sub">${highlightKeyword(item.category || '未分类', keyword)} · ${highlightKeyword(item.sku || '无 SKU', keyword)}</div>
           </div>
           <div style="text-align:right;">
             <div class="mobile-item-price">${money(c.sellPrice)}</div>
@@ -548,9 +575,9 @@ function renderMobile() {
           <div class="mini"><div class="k">已实现利润</div><div class="v ${c.realizedProfit >= 0 ? 'money pos' : 'money neg'}">${money(c.realizedProfit)}</div></div>
         </div>
         <div style="font-size:14px; color:#6b7280; line-height:1.6; margin-bottom:10px;">
-          供货渠道：${escapeHtml(item.supplier || '-')}<br>
-          存放位置：${escapeHtml(item.location || '-')}<br>
-          备注：${escapeHtml(item.note || '-')}
+          供货渠道：${highlightKeyword(item.supplier || '-', keyword)}<br>
+          存放位置：${highlightKeyword(item.location || '-', keyword)}<br>
+          备注：${highlightKeyword(item.note || '-', keyword)}
         </div>
         <div class="actions">
           <button class="primary" onclick="sellItem('${item.id}')">登记卖出</button>
@@ -563,6 +590,8 @@ function renderMobile() {
 }
 
 function render() {
+  const list = getFilteredItems();
+  renderSearchMeta(list);
   renderWorkbench();
   renderStats();
   renderLowStockAlert();

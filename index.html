@@ -40,7 +40,7 @@
     .compact-badges { margin-top: 10px; }
     .simple-hero { padding: 20px 22px; }
     .simple-hero h1 { margin: 0; font-size: 34px; }
-    .polished-hero { padding: 18px 20px; }
+    .polished-hero { padding: 14px 20px 18px; margin-top: 4px; }
     .hero-title-wrap { display:flex; align-items:center; gap:14px; }
     .hero-icon { width:48px; height:48px; border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:24px; background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.24); box-shadow: inset 0 1px 0 rgba(255,255,255,.18); }
     .hero-subtle { margin-top:4px; font-size:13px; opacity:.88; }
@@ -250,7 +250,7 @@
     .sticky-search-wrap { position: sticky; top: 0; z-index: 50; padding: 10px 0 8px; background: linear-gradient(180deg, rgba(246,247,251,.98), rgba(246,247,251,.82)); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
     .sticky-search-wrap input { width: 100%; min-height: 52px; border-radius: 18px; box-shadow: 0 10px 24px rgba(15,23,42,.08); }
     .global-sticky-search { position: fixed; top: 0; left: 0; right: 0; z-index: 80; padding: 8px 12px 10px; background: linear-gradient(180deg, rgba(246,247,251,.99), rgba(246,247,251,.88)); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
-    .global-sticky-search input { width: 100%; min-height: 52px; border-radius: 18px; box-shadow: 0 12px 26px rgba(15,23,42,.10); max-width: 1200px; margin: 0 auto; display:block; }
+    .global-sticky-search input { width: 100%; min-height: 56px; border-radius: 22px; box-shadow: 0 14px 28px rgba(15,23,42,.12); max-width: 1200px; margin: 0 auto; display:block; padding-left: 18px; padding-right: 18px; }
     .sync-status strong {
       color: #111827;
     }
@@ -510,6 +510,7 @@
     </section>
 
     <section class="card section-anchor" id="listSection" style="margin-top: 16px;">
+      <div id="searchResultMeta" class="compact-note" style="margin-bottom:10px; display:none;"></div>
       <div class="toolbar" style="margin-top:12px;">
         <div class="toolbar-left">
           <select id="stockFilter">
