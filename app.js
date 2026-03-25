@@ -34,6 +34,7 @@ const saleNoteInput = document.getElementById('saleNote');
 const lowStockAlert = document.getElementById('lowStockAlert');
 const periodStats = document.getElementById('periodStats');
 const saleRecords = document.getElementById('saleRecords');
+const workbenchGrid = document.getElementById('workbenchGrid');
 const quickAddBtn = document.getElementById('quickAddBtn');
 const quickListBtn = document.getElementById('quickListBtn');
 const quickSalesBtn = document.getElementById('quickSalesBtn');
@@ -157,6 +158,26 @@ function computePeriodStats() {
   };
 }
 
+function renderWorkbench() {
+  if (!workbenchGrid) return;
+  const lowCount = items.filter((i) => { const c = calc(i); return c.remaining > 0 && c.remaining <= 3; }).length;
+  const period = computePeriodStats();
+  const totalRemaining = items.reduce((sum, item) => sum + calc(item).remaining, 0);
+  const tiles = [
+    ['🛍️', '今日卖出', period.dayQty, '件数'],
+    ['💰', '本月利润', money(period.monthProfit), '自然月累计'],
+    ['⚠️', '低库存', lowCount, '需要关注'],
+    ['📦', '剩余库存', totalRemaining, '当前可售']
+  ];
+  workbenchGrid.innerHTML = tiles.map(([icon, label, value, sub]) => `
+    <div class="workbench-tile">
+      <div class="k"><span class="icon-inline">${icon}</span>${label}</div>
+      <div class="v">${value}</div>
+      <div class="s">${sub}</div>
+    </div>
+  `).join('');
+}
+
 function renderPeriodStats() {
   const p = computePeriodStats();
   const cards = [
@@ -215,10 +236,11 @@ function renderLowStockAlert() {
     return;
   }
   lowStockAlert.innerHTML = `
-    <div style="border:1px solid #fed7aa;background:#fff7ed;border-radius:12px;padding:10px 12px;color:#9a3412;font-size:14px;">
-      <strong>低库存提醒：</strong>${low.map(x=>`${escapeHtml(x.item.name)}（剩 ${x.c.remaining}）`).join('、')}
+    <div style="border:1px solid #fdba74;background:linear-gradient(180deg,#fff7ed,#fffbeb);border-radius:14px;padding:12px 14px;color:#9a3412;font-size:14px;box-shadow:0 8px 20px rgba(245,158,11,.10);">
+      <strong>⚠️ 低库存提醒：</strong>${low.map(x=>`${escapeHtml(x.item.name)}（剩 ${x.c.remaining}）`).join('、')}
     </div>`;
 }
+
 
 function openSaleModal(id) {
   const item = items.find(i => i.id === id);
@@ -523,6 +545,7 @@ function renderMobile() {
 }
 
 function render() {
+  renderWorkbench();
   renderStats();
   renderLowStockAlert();
   renderPeriodStats();
