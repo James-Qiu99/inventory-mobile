@@ -385,7 +385,14 @@ function fillForm(item) {
   document.getElementById('soldQuantity').value = item.sold_quantity ?? '';
   document.getElementById('location').value = item.location || '';
   document.getElementById('note').value = item.note || '';
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  if (primaryFieldsBlock) primaryFieldsBlock.setAttribute('open', 'open');
+  scrollToSection('formSection');
+  setTimeout(() => {
+    const nameInput = document.getElementById('name');
+    nameInput?.focus();
+    nameInput?.select?.();
+  }, 180);
 }
 
 async function removeItem(id) {
