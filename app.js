@@ -38,6 +38,7 @@ const quickListBtn = document.getElementById('quickListBtn');
 const quickSalesBtn = document.getElementById('quickSalesBtn');
 const categoryChips = [...document.querySelectorAll('.category-chip')];
 const qtyChips = [...document.querySelectorAll('.qty-chip')];
+const entryReadyBanner = document.getElementById('entryReadyBanner');
 
 function scrollToSection(id) {
   const el = document.getElementById(id);
@@ -245,6 +246,15 @@ function setActiveCategoryChip(value = '') {
   categoryChips.forEach((chip) => chip.classList.toggle('active', chip.dataset.category === value));
 }
 
+function flashEntryReadyBanner() {
+  if (!entryReadyBanner) return;
+  entryReadyBanner.style.display = 'block';
+  clearTimeout(flashEntryReadyBanner._timer);
+  flashEntryReadyBanner._timer = setTimeout(() => {
+    entryReadyBanner.style.display = 'none';
+  }, 2200);
+}
+
 function applyQuickEntryMode() {
   if (!quickEntryMode || !extraFieldsBlock) return;
 
@@ -274,12 +284,13 @@ function resetForm() {
     keepFormValuesForNext = false;
     setTimeout(() => {
       scrollToSection('formSection');
+      flashEntryReadyBanner();
       const nameInput = document.getElementById('name');
       if (nameInput) {
         nameInput.focus();
         nameInput.select?.();
       }
-    }, 120);
+    }, 180);
   } else {
     setActiveCategoryChip('');
   }
