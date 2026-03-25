@@ -111,6 +111,10 @@ function money(n) {
   return '¥' + toNumber(n).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function moneyOrPending(value, label = '待补') {
+  return toNumber(value) > 0 ? money(value) : `<span class="pending-text">${label}</span>`;
+}
+
 function percent(n) {
   return toNumber(n).toLocaleString('zh-CN', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
 }
@@ -521,7 +525,7 @@ function renderInventoryList() {
             <div class="inventory-sub">${highlightKeyword(item.category || '未分类', keyword)} · ${highlightKeyword(item.sku || '无 SKU', keyword)}</div>
           </div>
           <div class="inventory-side">
-            <div class="inventory-price">${money(c.sellPrice)}</div>
+            <div class="inventory-price">${moneyOrPending(c.sellPrice)}</div>
             <div class="inventory-sub">售价</div>
             <div class="inventory-remaining">${c.remaining} 件</div>
             <div class="inventory-sub">${c.remaining > 0 ? '可售库存' : '已售空'}</div>
@@ -575,8 +579,8 @@ function renderLegacyInventory() {
           <td>${escapeHtml(item.category || '-')}</td>
           <td>${escapeHtml(item.sku || '-')}</td>
           <td>${money(c.costPrice)}</td>
-          <td>${money(c.marketPrice)}</td>
-          <td>${money(c.sellPrice)}</td>
+          <td>${moneyOrPending(c.marketPrice)}</td>
+          <td>${moneyOrPending(c.sellPrice)}</td>
           <td>${c.quantity}</td>
           <td>${c.soldQuantity}</td>
           <td>${c.remaining}<br>${stockTag(c.remaining)}</td>
@@ -608,7 +612,7 @@ function renderLegacyInventory() {
               <div class="mobile-item-sub">${highlightKeyword(item.category || '未分类', keyword)} · ${highlightKeyword(item.sku || '无 SKU', keyword)}</div>
             </div>
             <div style="text-align:right;">
-              <div class="mobile-item-price">${money(c.sellPrice)}</div>
+              <div class="mobile-item-price">${moneyOrPending(c.sellPrice)}</div>
               <div class="mobile-item-sub">当前售价</div>
             </div>
           </div>
@@ -623,7 +627,7 @@ function renderLegacyInventory() {
             <div class="mini"><div class="k">分类</div><div class="v">${escapeHtml(item.category || '-')}</div></div>
             <div class="mini"><div class="k">SKU</div><div class="v">${escapeHtml(item.sku || '-')}</div></div>
             <div class="mini"><div class="k">进价</div><div class="v">${money(c.costPrice)}</div></div>
-            <div class="mini"><div class="k">售价</div><div class="v">${money(c.sellPrice)}</div></div>
+            <div class="mini"><div class="k">售价</div><div class="v">${moneyOrPending(c.sellPrice)}</div></div>
             <div class="mini"><div class="k">进货数量</div><div class="v">${c.quantity}</div></div>
             <div class="mini"><div class="k">已售 / 剩余</div><div class="v">${c.soldQuantity} / ${c.remaining}</div></div>
             <div class="mini"><div class="k">总成本</div><div class="v">${money(c.totalCost)}</div></div>
@@ -690,13 +694,16 @@ function renderSaleRecords() {
             <span class="sale-mobile-chip"><strong>销售额</strong>${money(r.revenue)}</span>
             ${r.note ? `<span class="sale-mobile-chip"><strong>备注</strong>${escapeHtml(r.note)}</span>` : ''}
           </div>
+          <div class="sale-mobile-actions">
+            <button type="button" class="ghost sale-delete-btn" onclick="deleteSaleRecord('${r.id}')">删除并恢复库存</button>
+          </div>
         </div>
       `).join('')}
     </div>
     <div class="table-wrap">
       <table style="min-width:720px;">
         <thead>
-          <tr><th>时间</th><th>商品</th><th>数量</th><th>成交单价</th><th>销售额</th><th>利润</th><th>备注</th></tr>
+          <tr><th>时间</th><th>商品</th><th>数量</th><th>成交单价</th><th>销售额</th><th>利润</th><th>备注</th><th>操作</th></tr>
         </thead>
         <tbody>
           ${rows.map(r=>`<tr>
@@ -707,11 +714,39 @@ function renderSaleRecords() {
             <td>${money(r.revenue)}</td>
             <td class="money ${toNumber(r.profit)>=0?'pos':'neg'}">${money(r.profit)}</td>
             <td>${escapeHtml(r.note || '-')}</td>
+            <td><button type="button" class="ghost sale-delete-btn" onclick="deleteSaleRecord('${r.id}')">删除并恢复库存</button></td>
           </tr>`).join('')}
         </tbody>
       </table>
     </div>`;
   updateSalesPaginationControls();
+}
+
+async function removeSaleRecord(id) {
+  const sale = saleLogs.find((row) => row.id === id);
+  if (!sale) return;
+  const item = items.find((row) => row.id === sale.item_id);
+  if (!confirm(`确定删除卖出记录「${sale.item_name || '未命名商品'}」吗？\n删除后会恢复 ${toNumber(sale.quantity)} 件库存。`)) return;
+
+  if (item) {
+    const nextSoldQuantity = Math.max(0, Math.floor(toNumber(item.sold_quantity) - toNumber(sale.quantity)));
+    const { error: itemError } = await supabaseClient
+      .from('items')
+      .update({ sold_quantity: nextSoldQuantity, updated_at: new Date().toISOString() })
+      .eq('id', item.id);
+    if (itemError) {
+      alert('恢复库存失败：' + itemError.message);
+      return;
+    }
+  }
+
+  const { error: saleError } = await supabaseClient.from('sales').delete().eq('id', id);
+  if (saleError) {
+    alert('删除卖出记录失败：' + saleError.message);
+    return;
+  }
+
+  await refreshInventory();
 }
 
 function openSaleModal(id) {
@@ -1231,6 +1266,10 @@ window.deleteItem = function(id) {
 
 window.sellItem = function(id) {
   openSaleModal(id);
+}
+
+window.deleteSaleRecord = function(id) {
+  removeSaleRecord(id);
 }
 
 categoryChips.forEach((chip) => {
