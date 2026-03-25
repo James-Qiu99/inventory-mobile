@@ -13,6 +13,7 @@ const resetBtn = document.getElementById('resetBtn');
 const saveAndNextBtn = document.getElementById('saveAndNextBtn');
 const quickEntryMode = document.getElementById('quickEntryMode');
 const extraFieldsBlock = document.getElementById('extraFieldsBlock');
+const primaryFieldsBlock = document.getElementById('primaryFieldsBlock');
 const searchInput = document.getElementById('searchInput');
 const stockFilter = document.getElementById('stockFilter');
 const sortFilter = document.getElementById('sortFilter');
@@ -283,13 +284,19 @@ function resetForm() {
     setActiveCategoryChip(previousCategory || '');
     keepFormValuesForNext = false;
     setTimeout(() => {
+      if (primaryFieldsBlock) primaryFieldsBlock.setAttribute('open', 'open');
       scrollToSection('formSection');
       flashEntryReadyBanner();
       const nameInput = document.getElementById('name');
       if (nameInput) {
         nameInput.focus();
+        nameInput.click?.();
         nameInput.select?.();
       }
+      setTimeout(() => {
+        nameInput?.focus();
+        nameInput?.click?.();
+      }, 120);
     }, 180);
   } else {
     setActiveCategoryChip('');
