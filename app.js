@@ -330,16 +330,16 @@ function renderWorkbench() {
   const totalRemaining = toNumber(summary.remaining_units);
   const lowCount = toNumber(summary.low_stock_count);
   const tiles = [
-    ['🛍️', '今日卖出', period.dayQty, '件', 'salesCard'],
-    ['💰', '本月利润', money(period.monthProfit), '本月累计', 'salesStatsCard'],
-    ['⚠️', '低库存', lowCount, '待关注', 'lowStockAnchor'],
-    ['📦', '剩余库存', totalRemaining, '可售', 'listSection']
+    ['🛍️', '今日卖出', period.dayQty, '', 'salesCard'],
+    ['💰', '本月利润', money(period.monthProfit), '', 'salesStatsCard'],
+    ['⚠️', '低库存', lowCount, '', 'lowStockAnchor'],
+    ['📦', '剩余库存', totalRemaining, '', 'listSection']
   ];
   workbenchGrid.innerHTML = tiles.map(([icon, label, value, sub, target]) => `
     <button class="workbench-tile" type="button" data-target="${target}">
       <div class="k"><span class="icon-inline">${icon}</span>${label}</div>
       <div class="v">${value}</div>
-      <div class="s">${sub}</div>
+      ${sub ? `<div class="s">${sub}</div>` : ''}
     </button>
   `).join('');
 }
