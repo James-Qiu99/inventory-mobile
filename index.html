@@ -38,6 +38,8 @@
     .compact-hero { padding: 16px 18px; margin-bottom: 14px; }
     .compact-hero h1 { font-size: 32px; margin-bottom: 4px; }
     .compact-badges { margin-top: 10px; }
+    .simple-hero { padding: 20px 22px; }
+    .simple-hero h1 { margin: 0; font-size: 34px; }
     .hero p { margin: 0; opacity: .92; line-height: 1.7; font-size: 19px; }
 
     .grid { display: grid; gap: 16px; }
@@ -241,6 +243,8 @@
       color: #9a3412;
     }
     .toolbar.sticky-mobile { position: sticky; top: 0; z-index: 45; padding: 12px; border-radius: 18px; background: rgba(255,255,255,.97); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 12px 28px rgba(15,23,42,.12); border:1px solid rgba(229,231,235,.9); }
+    .sticky-search-wrap { position: sticky; top: 0; z-index: 50; padding: 10px 0 8px; background: linear-gradient(180deg, rgba(246,247,251,.98), rgba(246,247,251,.82)); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+    .sticky-search-wrap input { width: 100%; min-height: 52px; border-radius: 18px; box-shadow: 0 10px 24px rgba(15,23,42,.08); }
     .sync-status strong {
       color: #111827;
     }
@@ -276,7 +280,9 @@
       bottom: 12px;
       z-index: 30;
       margin-top: 14px;
+      transition: transform .22s ease, opacity .18s ease;
     }
+    .quick-actions.hidden-by-input { opacity: 0; transform: translateY(16px); pointer-events: none; }
     .quick-actions-inner {
       display: grid;
       grid-template-columns: 1.25fr 1fr 1fr;
@@ -348,6 +354,7 @@
       .form-grid, .stats { grid-template-columns: 1fr; }
       .toolbar { flex-direction: column; align-items: stretch; }
       .toolbar.sticky-mobile { top: 4px; }
+      .sticky-search-wrap { top: 0; padding-top: 6px; }
       .toolbar-left, .toolbar-right { width: 100%; }
       .toolbar input, .toolbar select, .toolbar button, .toolbar .button { width: 100%; }
       .table-wrap { display: none; }
@@ -373,13 +380,8 @@
 </head>
 <body>
   <div class="container">
-    <section class="hero compact-hero">
-      <div class="hero-topline">库存工具 · 手机版</div>
+    <section class="hero compact-hero simple-hero">
       <h1>库存管理</h1>
-      <div class="hero-badges compact-badges">
-        <span class="hero-badge">云端同步</span>
-        <span class="hero-badge">低库存提醒</span>
-      </div>
     </section>
 
     <section class="card" style="margin-bottom: 16px;">
@@ -491,9 +493,11 @@
     </section>
 
     <section class="card section-anchor" id="listSection" style="margin-top: 16px;">
-      <div class="toolbar sticky-mobile">
+      <div class="sticky-search-wrap">
+        <input id="searchInput" placeholder="搜索商品名 / 分类 / SKU / 备注" />
+      </div>
+      <div class="toolbar" style="margin-top:12px;">
         <div class="toolbar-left">
-          <input id="searchInput" placeholder="搜索商品名 / 分类 / SKU / 备注" />
           <select id="stockFilter">
             <option value="all">全部库存状态</option>
             <option value="inStock">只看有库存</option>

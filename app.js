@@ -34,6 +34,7 @@ const lowStockAlert = document.getElementById('lowStockAlert');
 const periodStats = document.getElementById('periodStats');
 const saleRecords = document.getElementById('saleRecords');
 const workbenchGrid = document.getElementById('workbenchGrid');
+const quickActions = document.querySelector('.quick-actions');
 const quickAddBtn = document.getElementById('quickAddBtn');
 const quickListBtn = document.getElementById('quickListBtn');
 const quickSalesBtn = document.getElementById('quickSalesBtn');
@@ -45,6 +46,17 @@ function scrollToSection(id) {
   const el = document.getElementById(id);
   if (!el) return;
   el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function setQuickActionsVisibilityByInput(active) {
+  if (!quickActions) return;
+  quickActions.classList.toggle('hidden-by-input', !!active);
+}
+
+function isEditableTarget(el) {
+  if (!el) return false;
+  const tag = el.tagName?.toLowerCase();
+  return tag === 'input' || tag === 'textarea' || el.isContentEditable;
 }
 
 
@@ -795,3 +807,19 @@ if (quickSalesBtn) quickSalesBtn.addEventListener('click', () => scrollToSection
 
 applyQuickEntryMode();
 fetchAllData();
+
+document.addEventListener('focusin', (e) => {
+  if (isEditableTarget(e.target)) setQuickActionsVisibilityByInput(true);
+});
+
+document.addEventListener('focusout', () => {
+  setTimeout(() => {
+    const active = document.activeElement;
+    setQuickActionsVisibilityByInput(isEditableTarget(active));
+  }, 80);
+});
+
+window.addEventListener('resize', () => {
+  const active = document.activeElement;
+  setQuickActionsVisibilityByInput(isEditableTarget(active));
+});
