@@ -83,6 +83,9 @@ as $$
   from public.items;
 $$;
 
+grant select on public.inventory_items to anon, authenticated;
+grant execute on function public.inventory_summary() to anon, authenticated;
+
 alter table public.items enable row level security;
 alter table public.sales enable row level security;
 
