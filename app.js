@@ -33,6 +33,7 @@ const saleModalDesc = document.getElementById('saleModalDesc');
 const saleCancelBtn = document.getElementById('saleCancelBtn');
 const saleQuantityInput = document.getElementById('saleQuantity');
 const salePriceInput = document.getElementById('salePrice');
+const saleTimeInput = document.getElementById('saleTime');
 const saleNoteInput = document.getElementById('saleNote');
 const lowStockAlert = document.getElementById('lowStockAlert');
 const periodStats = document.getElementById('periodStats');
@@ -144,6 +145,23 @@ function getMonthRange(monthKey = selectedProfitMonth) {
     start: new Date(y, m, 1, 0, 0, 0, 0).getTime(),
     end: new Date(y, m + 1, 0, 23, 59, 59, 999).getTime()
   };
+}
+
+function toDatetimeLocalValue(date = new Date()) {
+  const d = date instanceof Date ? date : new Date(date);
+  const safeDate = Number.isNaN(d.getTime()) ? new Date() : d;
+  const offsetMs = safeDate.getTimezoneOffset() * 60000;
+  return new Date(safeDate.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
+function getSaleTimeIso() {
+  if (!saleTimeInput?.value) return new Date().toISOString();
+  const d = new Date(saleTimeInput.value);
+  if (Number.isNaN(d.getTime())) {
+    alert('请选择有效的卖出时间。');
+    return null;
+  }
+  return d.toISOString();
 }
 
 function escapeHtml(str = '') {
@@ -822,6 +840,7 @@ function openSaleModal(id) {
   saleModalDesc.textContent = `商品：${item.name}｜当前剩余库存：${c.remaining}｜默认售价：${money(c.sellPrice)}`;
   saleQuantityInput.value = '';
   salePriceInput.value = c.sellPrice || '';
+  if (saleTimeInput) saleTimeInput.value = toDatetimeLocalValue();
   saleNoteInput.value = '';
   saleModal.classList.add('show');
   setTimeout(() => saleQuantityInput.focus(), 50);
@@ -1276,7 +1295,9 @@ saleForm.addEventListener('submit', async (e) => {
   const c = calc(item);
   const saleQty = Math.max(1, Math.floor(toNumber(saleQuantityInput.value)));
   const salePrice = toNumber(salePriceInput.value || item.sell_price);
+  const soldAt = getSaleTimeIso();
   const saleNote = saleNoteInput.value.trim();
+  if (!soldAt) return;
   if (saleQty > c.remaining) {
     alert(`卖出数量不能大于剩余库存（当前剩余 ${c.remaining}）。`);
     return;
@@ -1306,7 +1327,7 @@ saleForm.addEventListener('submit', async (e) => {
     revenue: salePrice * saleQty,
     profit: (salePrice - toNumber(item.cost_price)) * saleQty,
     note: saleNote,
-    sold_at: new Date().toISOString()
+    sold_at: soldAt
   };
 
   const { error: saleError } = await supabaseClient.from('sales').insert(saleRecord);
