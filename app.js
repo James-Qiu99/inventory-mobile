@@ -20,6 +20,7 @@ const extraFieldsBlock = document.getElementById('extraFieldsBlock');
 const primaryFieldsBlock = document.getElementById('primaryFieldsBlock');
 const searchInput = document.getElementById('searchInput');
 const stockFilter = document.getElementById('stockFilter');
+const categoryFilter = document.getElementById('categoryFilter');
 const sortFilter = document.getElementById('sortFilter');
 const exportBtn = document.getElementById('exportBtn');
 const backupBtn = document.getElementById('backupBtn');
@@ -50,6 +51,7 @@ const prevPageBtn = document.getElementById('prevPageBtn');
 const nextPageBtn = document.getElementById('nextPageBtn');
 const lastPageBtn = document.getElementById('lastPageBtn');
 const salesPageInfo = document.getElementById('salesPageInfo');
+const salesCategoryFilter = document.getElementById('salesCategoryFilter');
 const salesPageNumbers = document.getElementById('salesPageNumbers');
 const firstSalesPageBtn = document.getElementById('firstSalesPageBtn');
 const prevSalesPageBtn = document.getElementById('prevSalesPageBtn');
@@ -230,8 +232,44 @@ function getInventoryPageCount(totalCount = inventoryTotalCount) {
   return totalCount > 0 ? Math.max(1, Math.ceil(totalCount / INVENTORY_PAGE_SIZE)) : 0;
 }
 
-function getSalesPageCount(totalCount = saleLogs.length) {
+function getSalesPageCount(totalCount = getFilteredSaleLogs().length) {
   return totalCount > 0 ? Math.max(1, Math.ceil(totalCount / SALES_PAGE_SIZE)) : 0;
+}
+
+function getRegisteredCategories() {
+  return [...new Set(items.map((item) => String(item.category || '').trim()).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, 'zh-CN'));
+}
+
+function renderCategoryFilterOptions() {
+  const categories = getRegisteredCategories();
+  const renderOptions = (selectedValue = '') => [
+    '<option value="">全部分类</option>',
+    ...categories.map((category) => (
+      `<option value="${escapeHtml(category)}" ${category === selectedValue ? 'selected' : ''}>${escapeHtml(category)}</option>`
+    ))
+  ].join('');
+
+  if (categoryFilter) {
+    const selected = categories.includes(categoryFilter.value) ? categoryFilter.value : '';
+    categoryFilter.innerHTML = renderOptions(selected);
+  }
+  if (salesCategoryFilter) {
+    const selected = categories.includes(salesCategoryFilter.value) ? salesCategoryFilter.value : '';
+    salesCategoryFilter.innerHTML = renderOptions(selected);
+  }
+}
+
+function getSaleCategory(sale) {
+  const item = items.find((row) => row.id === sale.item_id);
+  return String(item?.category || '').trim();
+}
+
+function getFilteredSaleLogs() {
+  const categories = getRegisteredCategories();
+  const selectedCategory = salesCategoryFilter?.value || '';
+  const category = categories.includes(selectedCategory) ? selectedCategory : '';
+  return saleLogs.filter((sale) => !category || getSaleCategory(sale) === category);
 }
 
 function getCompactPageList(currentPage, totalPages) {
@@ -294,18 +332,22 @@ function getInventorySummary() {
 function getFilteredAndSortedItems(sourceItems = items) {
   const keyword = normalizeSearchTerm(searchInput.value).toLowerCase();
   const filter = stockFilter?.value || 'active';
+  const selectedCategory = categoryFilter?.value || '';
+  const sourceCategories = new Set(sourceItems.map((item) => String(item.category || '').trim()).filter(Boolean));
+  const category = sourceCategories.has(selectedCategory) ? selectedCategory : '';
   let list = sourceItems.filter((item) => {
     const c = calc(item);
     const searchable = [item.name, item.category, item.sku, item.supplier, item.location, item.note]
       .join(' ')
       .toLowerCase();
     const hitKeyword = !keyword || searchable.includes(keyword);
+    const hitCategory = !category || String(item.category || '').trim() === category;
     let hitFilter = true;
     if (filter === 'active') hitFilter = c.remaining > 0;
     if (filter === 'inStock') hitFilter = c.remaining > 0;
     if (filter === 'soldOut') hitFilter = c.remaining === 0;
     if (filter === 'lowStock') hitFilter = c.remaining > 0 && c.remaining <= 3;
-    return hitKeyword && hitFilter;
+    return hitKeyword && hitCategory && hitFilter;
   });
 
   const mode = sortFilter?.value || 'updated_desc';
@@ -388,10 +430,11 @@ function updatePaginationControls() {
 }
 
 function updateSalesPaginationControls() {
+  const filteredCount = getFilteredSaleLogs().length;
   const totalPages = getSalesPageCount();
   if (salesPageInfo) {
     salesPageInfo.textContent = totalPages
-      ? `第 ${salesPage} / ${totalPages} 页 · 共 ${saleLogs.length} 条`
+      ? `第 ${salesPage} / ${totalPages} 页 · 共 ${filteredCount} 条`
       : '暂无卖出记录';
   }
   renderPageNumbers(salesPageNumbers, salesPage, totalPages, 'sales');
@@ -766,6 +809,7 @@ function renderLegacyInventory() {
 
 function render() {
   updateSearchClearButton();
+  renderCategoryFilterOptions();
   renderSearchMeta();
   renderWorkbench();
   renderStats();
@@ -777,9 +821,17 @@ function render() {
 }
 
 function renderSaleRecords() {
+  const filteredSaleLogs = getFilteredSaleLogs();
   if (!saleLogs.length) {
     saleRecords.className = 'empty';
     saleRecords.textContent = '暂无卖出记录。';
+    updateSalesPaginationControls();
+    return;
+  }
+  if (!filteredSaleLogs.length) {
+    saleRecords.className = 'empty';
+    saleRecords.textContent = '当前分类暂无卖出记录。';
+    salesPage = 1;
     updateSalesPaginationControls();
     return;
   }
@@ -788,7 +840,7 @@ function renderSaleRecords() {
     salesPage = totalPages;
   }
   const start = (Math.max(1, salesPage) - 1) * SALES_PAGE_SIZE;
-  const rows = [...saleLogs]
+  const rows = [...filteredSaleLogs]
     .sort((a,b)=>new Date(b.sold_at)-new Date(a.sold_at))
     .slice(start, start + SALES_PAGE_SIZE);
   saleRecords.className = '';
@@ -805,6 +857,7 @@ function renderSaleRecords() {
           </div>
           <div class="sale-mobile-meta">
             <span class="sale-mobile-chip"><strong>数量</strong>${r.quantity}</span>
+            ${getSaleCategory(r) ? `<span class="sale-mobile-chip"><strong>分类</strong>${escapeHtml(getSaleCategory(r))}</span>` : ''}
             <span class="sale-mobile-chip"><strong>单价</strong>${money(r.sale_price)}</span>
             <span class="sale-mobile-chip"><strong>销售额</strong>${money(r.revenue)}</span>
             ${r.note ? `<span class="sale-mobile-chip"><strong>备注</strong>${escapeHtml(r.note)}</span>` : ''}
@@ -816,14 +869,15 @@ function renderSaleRecords() {
       `).join('')}
     </div>
     <div class="table-wrap">
-      <table style="min-width:720px;">
+      <table style="min-width:820px;">
         <thead>
-          <tr><th>时间</th><th>商品</th><th>数量</th><th>成交单价</th><th>销售额</th><th>利润</th><th>备注</th><th>操作</th></tr>
+          <tr><th>时间</th><th>商品</th><th>分类</th><th>数量</th><th>成交单价</th><th>销售额</th><th>利润</th><th>备注</th><th>操作</th></tr>
         </thead>
         <tbody>
           ${rows.map(r=>`<tr>
             <td>${escapeHtml(new Date(r.sold_at).toLocaleString('zh-CN'))}</td>
             <td>${escapeHtml(r.item_name || '-')}</td>
+            <td>${escapeHtml(getSaleCategory(r) || '-')}</td>
             <td>${r.quantity}</td>
             <td>${money(r.sale_price)}</td>
             <td>${money(r.revenue)}</td>
@@ -1238,6 +1292,7 @@ searchInput.addEventListener('keydown', (e) => {
 });
 
 stockFilter.addEventListener('change', () => refreshInventory({ resetPage: true }));
+if (categoryFilter) categoryFilter.addEventListener('change', () => refreshInventory({ resetPage: true }));
 if (clearSearchBtn) clearSearchBtn.addEventListener('click', () => { searchInput.value = ''; updateSearchClearButton(); refreshInventory({ resetPage: true }); searchInput.focus(); });
 if (sortFilter) sortFilter.addEventListener('change', () => refreshInventory({ resetPage: true }));
 async function goToInventoryPage(page) {
@@ -1294,6 +1349,10 @@ if (salesPageNumbers) salesPageNumbers.addEventListener('click', (event) => {
   const trigger = event.target.closest('[data-page-target="sales"]');
   if (!trigger) return;
   goToSalesPage(trigger.dataset.page);
+});
+if (salesCategoryFilter) salesCategoryFilter.addEventListener('change', () => {
+  salesPage = 1;
+  renderSaleRecords();
 });
 exportBtn.addEventListener('click', exportCSV);
 

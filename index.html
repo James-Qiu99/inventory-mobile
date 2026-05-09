@@ -699,6 +699,9 @@
             <option value="soldOut">只看已售空</option>
             <option value="lowStock">只看低库存（≤ 3）</option>
           </select>
+          <select id="categoryFilter" aria-label="筛选库存分类">
+            <option value="">全部分类</option>
+          </select>
           <select id="sortFilter">
             <option value="updated_desc">按最近更新</option>
             <option value="stock_asc">按库存从少到多</option>
@@ -739,7 +742,13 @@
       </div>
       <div class="card section-anchor" id="salesCard">
         <h2 id="salesSection">🧾 卖出记录</h2>
-        <div class="compact-note">最近成交记录。</div>
+        <div class="toolbar" style="margin-top:8px; margin-bottom:10px;">
+          <div class="toolbar-left">
+            <select id="salesCategoryFilter" aria-label="筛选卖出记录分类">
+              <option value="">全部分类</option>
+            </select>
+          </div>
+        </div>
         <div id="saleRecords" class="empty">暂无卖出记录。</div>
         <div class="pagination-bar" style="margin-top:12px;">
           <div id="salesPageInfo" class="pagination-info">共 0 条</div>
@@ -823,7 +832,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./supabase-config.js?v=20260509e"></script>
-  <script src="./app.js?v=20260509e"></script>
+  <script src="./supabase-config.js?v=20260509f"></script>
+  <script src="./app.js?v=20260509f"></script>
 </body>
 </html>
