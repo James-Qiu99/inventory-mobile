@@ -508,10 +508,8 @@ function renderStats() {
     ['商品种类', toNumber(summary.total_products), `共录入 ${toNumber(summary.total_products)} 种商品`],
     ['进货总数量', toNumber(summary.total_units), `已售 ${toNumber(summary.sold_units)}，剩余 ${toNumber(summary.remaining_units)}`],
     ['总进货成本', money(summary.total_cost), '按全部库存统计'],
-    ['已实现利润', money(summary.realized_profit), '按卖出记录真实成交价统计'],
-    ['总利润（预计）', money(summary.estimated_total_profit), '预估售价 - 进价'],
-    ['剩余库存预估货值', money(summary.remaining_market_value), '预估售价 × 剩余库存'],
-    ['剩余库存预计利润', money(toNumber(summary.remaining_sale_value) - toNumber(summary.remaining_cost)), '预估售价 - 剩余成本']
+    ['已实现利润总额', money(summary.realized_profit), '按卖出记录真实成交价统计'],
+    ['预估剩余库存估计', money(summary.remaining_market_value), '预估售价 × 剩余库存']
   ];
 
   stats.innerHTML = cards.map(([label, value, hint]) => `
@@ -870,6 +868,7 @@ function renderSaleRecords() {
             ${r.note ? `<span class="sale-mobile-chip"><strong>备注</strong>${escapeHtml(r.note)}</span>` : ''}
           </div>
           <div class="sale-mobile-actions">
+            <button type="button" class="ghost sale-delete-btn" onclick="editSaleRecordTime('${r.id}')">编辑时间</button>
             <button type="button" class="ghost sale-delete-btn" onclick="deleteSaleRecord('${r.id}')">删除并恢复库存</button>
           </div>
         </div>
@@ -890,7 +889,10 @@ function renderSaleRecords() {
             <td>${money(r.revenue)}</td>
             <td class="money ${toNumber(r.profit)>=0?'pos':'neg'}">${money(r.profit)}</td>
             <td>${escapeHtml(r.note || '-')}</td>
-            <td><button type="button" class="ghost sale-delete-btn" onclick="deleteSaleRecord('${r.id}')">删除并恢复库存</button></td>
+            <td>
+              <button type="button" class="ghost sale-delete-btn" onclick="editSaleRecordTime('${r.id}')">编辑时间</button>
+              <button type="button" class="ghost sale-delete-btn" onclick="deleteSaleRecord('${r.id}')">删除并恢复库存</button>
+            </td>
           </tr>`).join('')}
         </tbody>
       </table>
@@ -922,6 +924,29 @@ async function removeSaleRecord(id) {
     return;
   }
 
+  await refreshInventory();
+}
+
+async function updateSaleRecordTime(id) {
+  const sale = saleLogs.find((row) => row.id === id);
+  if (!sale) return;
+  const currentValue = toDatetimeLocalValue(sale.sold_at);
+  const nextValue = prompt('修改卖出时间（格式：YYYY-MM-DDTHH:mm）', currentValue);
+  if (nextValue === null) return;
+  const nextDate = new Date(nextValue);
+  if (Number.isNaN(nextDate.getTime())) {
+    alert('时间格式无效，请重新输入。');
+    return;
+  }
+
+  const { error } = await supabaseClient
+    .from('sales')
+    .update({ sold_at: nextDate.toISOString() })
+    .eq('id', id);
+  if (error) {
+    alert('更新时间失败：' + error.message);
+    return;
+  }
   await refreshInventory();
 }
 
@@ -1516,6 +1541,10 @@ window.sellItem = function(id) {
 
 window.deleteSaleRecord = function(id) {
   removeSaleRecord(id);
+}
+
+window.editSaleRecordTime = function(id) {
+  updateSaleRecordTime(id);
 }
 
 categoryChips.forEach((chip) => {
