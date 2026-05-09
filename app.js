@@ -293,7 +293,7 @@ function getInventorySummary() {
 
 function getFilteredAndSortedItems(sourceItems = items) {
   const keyword = normalizeSearchTerm(searchInput.value).toLowerCase();
-  const filter = stockFilter?.value || 'all';
+  const filter = stockFilter?.value || 'active';
   let list = sourceItems.filter((item) => {
     const c = calc(item);
     const searchable = [item.name, item.category, item.sku, item.supplier, item.location, item.note]
@@ -301,6 +301,7 @@ function getFilteredAndSortedItems(sourceItems = items) {
       .toLowerCase();
     const hitKeyword = !keyword || searchable.includes(keyword);
     let hitFilter = true;
+    if (filter === 'active') hitFilter = c.remaining > 0;
     if (filter === 'inStock') hitFilter = c.remaining > 0;
     if (filter === 'soldOut') hitFilter = c.remaining === 0;
     if (filter === 'lowStock') hitFilter = c.remaining > 0 && c.remaining <= 3;
