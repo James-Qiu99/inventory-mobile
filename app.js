@@ -1095,6 +1095,25 @@ async function findMergeCandidate(data) {
   return matches[0];
 }
 
+async function findSameNameDifferentCostItems(data) {
+  const { data: matches, error } = await supabaseClient
+    .from('items')
+    .select('id,name,sku,cost_price,quantity,sold_quantity')
+    .eq('name', data.name)
+    .limit(20);
+
+  if (error) throw error;
+  return (matches || []).filter((item) => toNumber(item.cost_price) !== toNumber(data.cost_price));
+}
+
+function formatDifferentCostBatchList(rows) {
+  return rows.slice(0, 5).map((item) => {
+    const c = calc(item);
+    const sku = item.sku ? `，SKU：${item.sku}` : '';
+    return `- 进价 ${money(c.costPrice)}，剩余 ${c.remaining} 件${sku}`;
+  }).join('\n');
+}
+
 function fillForm(item) {
   editingId = item.id;
   formTitle.textContent = '编辑商品';
@@ -1247,6 +1266,21 @@ form.addEventListener('submit', async (e) => {
         }
       }
     } else {
+      const differentCostItems = await findSameNameDifferentCostItems(data);
+      if (differentCostItems.length) {
+        const shouldCreateSeparateBatch = confirm([
+          `已存在同名商品「${data.name}」，但进价和这次不同。`,
+          '',
+          '已有批次：',
+          formatDifferentCostBatchList(differentCostItems),
+          '',
+          `这次进价：${money(data.cost_price)}`,
+          '',
+          '建议作为独立批次保存，这样利润会按各自进价计算。',
+          '确定继续新增独立批次吗？'
+        ].join('\n'));
+        if (!shouldCreateSeparateBatch) return;
+      }
       ({ error } = await supabaseClient.from('items').insert(data));
       if (!error && data.sold_quantity > 0) {
         initialSaleRecord = buildInitialSaleRecord(data, data.sold_quantity);
