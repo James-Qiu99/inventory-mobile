@@ -1506,7 +1506,21 @@ saleForm.addEventListener('submit', async (e) => {
 
   const { error: saleError } = await supabaseClient.from('sales').insert(saleRecord);
   if (saleError) {
+    const { error: rollbackError } = await supabaseClient
+      .from('items')
+      .update({
+        sold_quantity: toNumber(item.sold_quantity),
+        note: item.note || '',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', item.id);
+    if (rollbackError) {
+      alert('保存卖出记录失败，且库存回滚失败：' + rollbackError.message);
+      await refreshInventory();
+      return;
+    }
     alert('保存卖出记录失败：' + saleError.message);
+    await refreshInventory();
     return;
   }
 
