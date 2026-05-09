@@ -279,14 +279,26 @@
     .pagination-info { font-size: 14px; color: var(--muted); line-height: 1.5; }
     .pagination-actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
     .pagination-actions button:disabled { opacity: .45; cursor: not-allowed; }
-    .page-select {
-      width: auto;
-      min-width: 112px;
-      min-height: 44px;
-      padding: 10px 34px 10px 12px;
+    .page-numbers { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+    .page-number {
+      min-width: 38px;
+      min-height: 38px;
+      padding: 8px 10px;
       border-radius: 12px;
-      font-size: 15px;
+      font-size: 14px;
       box-shadow: none;
+      background: rgba(17,24,39,.05);
+      color: #374151;
+    }
+    .page-number.active {
+      background: #0a84ff;
+      color: #fff;
+    }
+    .page-ellipsis {
+      min-width: 22px;
+      color: var(--muted);
+      text-align: center;
+      font-weight: 700;
     }
     .empty {
       text-align: center;
@@ -541,12 +553,15 @@
       .actions button, .actions .button { flex: 1 1 calc(50% - 10px); }
       input, textarea, select, button { font-size: 16px; }
       input, textarea, select { min-height: 52px; }
-      .month-select, .page-select { width: 100%; }
+      .month-select { width: 100%; }
       .modal { padding: 16px 16px 24px; border-radius: 22px 22px 0 0; }
       .qty-chip { flex: 1 1 calc(50% - 8px); justify-content: center; }
       #saveAndNextBtn { width: 100%; }
       .pagination-bar { flex-direction: column; align-items: stretch; }
-      .pagination-actions button { flex: 1 1 0; }
+      .pagination-actions { justify-content: center; }
+      .pagination-actions > button { flex: 1 1 calc(50% - 8px); }
+      .page-numbers { width: 100%; justify-content: center; order: 2; }
+      .page-number { flex: 0 0 auto; }
     }
   </style>
 </head>
@@ -698,7 +713,7 @@
         <div class="pagination-actions">
           <button type="button" class="ghost" id="firstPageBtn">第一页</button>
           <button type="button" class="ghost" id="prevPageBtn">上一页</button>
-          <select id="pageSelect" class="page-select" aria-label="选择库存页数"></select>
+          <div id="pageNumbers" class="page-numbers" aria-label="选择库存页数"></div>
           <button type="button" class="ghost" id="nextPageBtn">下一页</button>
           <button type="button" class="ghost" id="lastPageBtn">最后一页</button>
         </div>
@@ -728,8 +743,11 @@
         <div class="pagination-bar" style="margin-top:12px;">
           <div id="salesPageInfo" class="pagination-info">共 0 条</div>
           <div class="pagination-actions">
+            <button type="button" class="ghost" id="firstSalesPageBtn">第一页</button>
             <button type="button" class="ghost" id="prevSalesPageBtn">上一页</button>
+            <div id="salesPageNumbers" class="page-numbers" aria-label="选择卖出记录页数"></div>
             <button type="button" class="ghost" id="nextSalesPageBtn">下一页</button>
+            <button type="button" class="ghost" id="lastSalesPageBtn">最后一页</button>
           </div>
         </div>
       </div>
@@ -804,7 +822,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./supabase-config.js?v=20260509b"></script>
-  <script src="./app.js?v=20260509b"></script>
+  <script src="./supabase-config.js?v=20260509c"></script>
+  <script src="./app.js?v=20260509c"></script>
 </body>
 </html>

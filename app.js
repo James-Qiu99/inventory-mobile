@@ -44,14 +44,17 @@ const clearSearchBtn = document.getElementById('clearSearchBtn');
 const emptyStateTitle = document.getElementById('emptyStateTitle');
 const emptyStateText = document.getElementById('emptyStateText');
 const pageInfo = document.getElementById('pageInfo');
-const pageSelect = document.getElementById('pageSelect');
+const pageNumbers = document.getElementById('pageNumbers');
 const firstPageBtn = document.getElementById('firstPageBtn');
 const prevPageBtn = document.getElementById('prevPageBtn');
 const nextPageBtn = document.getElementById('nextPageBtn');
 const lastPageBtn = document.getElementById('lastPageBtn');
 const salesPageInfo = document.getElementById('salesPageInfo');
+const salesPageNumbers = document.getElementById('salesPageNumbers');
+const firstSalesPageBtn = document.getElementById('firstSalesPageBtn');
 const prevSalesPageBtn = document.getElementById('prevSalesPageBtn');
 const nextSalesPageBtn = document.getElementById('nextSalesPageBtn');
+const lastSalesPageBtn = document.getElementById('lastSalesPageBtn');
 const quickActions = document.querySelector('.quick-actions');
 const quickAddBtn = document.getElementById('quickAddBtn');
 const quickListBtn = document.getElementById('quickListBtn');
@@ -231,6 +234,43 @@ function getSalesPageCount(totalCount = saleLogs.length) {
   return totalCount > 0 ? Math.max(1, Math.ceil(totalCount / SALES_PAGE_SIZE)) : 0;
 }
 
+function getCompactPageList(currentPage, totalPages) {
+  if (totalPages <= 0) return [];
+  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, index) => index + 1);
+
+  const pages = new Set([1, totalPages, currentPage, currentPage - 1, currentPage + 1]);
+  if (currentPage <= 4) {
+    [2, 3, 4, 5].forEach((page) => pages.add(page));
+  }
+  if (currentPage >= totalPages - 3) {
+    [totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1].forEach((page) => pages.add(page));
+  }
+
+  const sorted = [...pages]
+    .filter((page) => page >= 1 && page <= totalPages)
+    .sort((a, b) => a - b);
+  const result = [];
+  sorted.forEach((page) => {
+    const previous = result[result.length - 1];
+    if (typeof previous === 'number' && page - previous > 1) result.push('...');
+    result.push(page);
+  });
+  return result;
+}
+
+function renderPageNumbers(container, currentPage, totalPages, target) {
+  if (!container) return;
+  if (!totalPages) {
+    container.innerHTML = '';
+    return;
+  }
+  container.innerHTML = getCompactPageList(currentPage, totalPages).map((page) => {
+    if (page === '...') return '<span class="page-ellipsis">...</span>';
+    const active = page === currentPage ? ' active' : '';
+    return `<button type="button" class="page-number${active}" data-page-target="${target}" data-page="${page}" aria-label="第 ${page} 页">${page}</button>`;
+  }).join('');
+}
+
 function buildFallbackInventorySummary(rows = inventoryPageRows) {
   const calcRows = rows.map((row) => calc(row));
   return {
@@ -339,15 +379,7 @@ function updatePaginationControls() {
       ? `第 ${inventoryPage} / ${totalPages} 页 · 共 ${inventoryTotalCount} 条`
       : '暂无匹配库存';
   }
-  if (pageSelect) {
-    pageSelect.innerHTML = totalPages
-      ? Array.from({ length: totalPages }, (_, index) => {
-          const page = index + 1;
-          return `<option value="${page}" ${page === inventoryPage ? 'selected' : ''}>第 ${page} 页</option>`;
-        }).join('')
-      : '<option value="">无可选页</option>';
-    pageSelect.disabled = loading || totalPages === 0;
-  }
+  renderPageNumbers(pageNumbers, inventoryPage, totalPages, 'inventory');
   if (firstPageBtn) firstPageBtn.disabled = loading || inventoryPage <= 1 || totalPages === 0;
   if (prevPageBtn) prevPageBtn.disabled = loading || inventoryPage <= 1 || totalPages === 0;
   if (nextPageBtn) nextPageBtn.disabled = loading || inventoryPage >= totalPages || totalPages === 0;
@@ -358,11 +390,14 @@ function updateSalesPaginationControls() {
   const totalPages = getSalesPageCount();
   if (salesPageInfo) {
     salesPageInfo.textContent = totalPages
-      ? `共 ${saleLogs.length} 条`
+      ? `第 ${salesPage} / ${totalPages} 页 · 共 ${saleLogs.length} 条`
       : '暂无卖出记录';
   }
+  renderPageNumbers(salesPageNumbers, salesPage, totalPages, 'sales');
+  if (firstSalesPageBtn) firstSalesPageBtn.disabled = loading || salesPage <= 1 || totalPages === 0;
   if (prevSalesPageBtn) prevSalesPageBtn.disabled = loading || salesPage <= 1 || totalPages === 0;
   if (nextSalesPageBtn) nextSalesPageBtn.disabled = loading || salesPage >= totalPages || totalPages === 0;
+  if (lastSalesPageBtn) lastSalesPageBtn.disabled = loading || salesPage >= totalPages || totalPages === 0;
 }
 
 function updateSearchClearButton() {
@@ -1179,6 +1214,16 @@ async function goToInventoryPage(page) {
   scrollToAnchoredSection('listSection');
 }
 
+function goToSalesPage(page) {
+  const totalPages = getSalesPageCount();
+  if (!totalPages) return;
+  const targetPage = Math.min(Math.max(1, Math.floor(toNumber(page))), totalPages);
+  if (targetPage === salesPage) return;
+  salesPage = targetPage;
+  renderSaleRecords();
+  scrollToAnchoredSection('salesCard');
+}
+
 if (firstPageBtn) firstPageBtn.addEventListener('click', () => goToInventoryPage(1));
 if (prevPageBtn) prevPageBtn.addEventListener('click', () => {
   goToInventoryPage(inventoryPage - 1);
@@ -1189,26 +1234,30 @@ if (nextPageBtn) nextPageBtn.addEventListener('click', () => {
 if (lastPageBtn) lastPageBtn.addEventListener('click', () => {
   goToInventoryPage(getInventoryPageCount());
 });
-if (pageSelect) pageSelect.addEventListener('change', () => {
-  goToInventoryPage(pageSelect.value);
+if (pageNumbers) pageNumbers.addEventListener('click', (event) => {
+  const trigger = event.target.closest('[data-page-target="inventory"]');
+  if (!trigger) return;
+  goToInventoryPage(trigger.dataset.page);
 });
 if (profitMonthSelect) profitMonthSelect.addEventListener('change', () => {
   selectedProfitMonth = profitMonthSelect.value || getMonthKey(new Date());
   renderWorkbench();
   renderPeriodStats();
 });
+if (firstSalesPageBtn) firstSalesPageBtn.addEventListener('click', () => goToSalesPage(1));
 if (prevSalesPageBtn) prevSalesPageBtn.addEventListener('click', () => {
-  if (salesPage <= 1) return;
-  salesPage -= 1;
-  renderSaleRecords();
-  scrollToAnchoredSection('salesCard');
+  goToSalesPage(salesPage - 1);
 });
 if (nextSalesPageBtn) nextSalesPageBtn.addEventListener('click', () => {
-  const totalPages = getSalesPageCount();
-  if (totalPages && salesPage >= totalPages) return;
-  salesPage += 1;
-  renderSaleRecords();
-  scrollToAnchoredSection('salesCard');
+  goToSalesPage(salesPage + 1);
+});
+if (lastSalesPageBtn) lastSalesPageBtn.addEventListener('click', () => {
+  goToSalesPage(getSalesPageCount());
+});
+if (salesPageNumbers) salesPageNumbers.addEventListener('click', (event) => {
+  const trigger = event.target.closest('[data-page-target="sales"]');
+  if (!trigger) return;
+  goToSalesPage(trigger.dataset.page);
 });
 exportBtn.addEventListener('click', exportCSV);
 
