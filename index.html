@@ -629,20 +629,12 @@
               <input id="costPrice" type="number" min="0" step="0.01" placeholder="0" />
             </div>
             <div class="field">
-              <label for="marketPrice">市场价（单价）</label>
+              <label for="marketPrice">预估售价（单价）</label>
               <input id="marketPrice" type="number" min="0" step="0.01" placeholder="0" />
-            </div>
-            <div class="field">
-              <label for="sellPrice">你的售价（单价）</label>
-              <input id="sellPrice" type="number" min="0" step="0.01" placeholder="0" />
             </div>
             <div class="field">
               <label for="quantity">进货数量</label>
               <input id="quantity" type="number" min="0" step="1" placeholder="0" />
-            </div>
-            <div class="field">
-              <label for="soldQuantity">已售数量</label>
-              <input id="soldQuantity" type="number" min="0" step="1" placeholder="0" />
             </div>
             </details>
         <details class="form-steps" id="extraFieldsBlock">
@@ -706,7 +698,7 @@
             <option value="updated_desc">按最近更新</option>
             <option value="stock_asc">按库存从少到多</option>
             <option value="profit_desc">按利润从高到低</option>
-            <option value="price_desc">按售价从高到低</option>
+            <option value="price_desc">按预估售价从高到低</option>
           </select>
         </div>
       </div>
@@ -811,7 +803,7 @@
             </div>
           </div>
           <div class="field">
-            <label for="salePrice">本次成交单价（默认当前售价）</label>
+            <label for="salePrice">本次成交单价（默认预估售价）</label>
             <input id="salePrice" type="number" min="0" step="0.01" placeholder="0" />
           </div>
           <div class="field full">
@@ -832,7 +824,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./supabase-config.js?v=20260509g"></script>
-  <script src="./app.js?v=20260509g"></script>
+  <script src="./supabase-config.js?v=20260509h"></script>
+  <script src="./app.js?v=20260509h"></script>
 </body>
 </html>

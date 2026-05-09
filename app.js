@@ -194,21 +194,24 @@ function highlightKeyword(text, keyword) {
 function calc(item) {
   const costPrice = toNumber(item.cost_price);
   const marketPrice = toNumber(item.market_price);
-  const sellPrice = toNumber(item.sell_price);
+  const estimatedPrice = marketPrice || toNumber(item.sell_price);
   const quantity = Math.max(0, Math.floor(toNumber(item.quantity)));
   const soldQuantity = Math.max(0, Math.floor(toNumber(item.sold_quantity)));
   const safeSold = Math.min(quantity, soldQuantity);
   const remaining = Math.max(0, quantity - safeSold);
+  const itemSales = saleLogs.filter((sale) => sale.item_id === item.id);
+  const soldFromRecords = itemSales.reduce((sum, sale) => sum + Math.max(0, Math.floor(toNumber(sale.quantity))), 0);
   const totalCost = costPrice * quantity;
-  const realizedRevenue = sellPrice * safeSold;
-  const realizedProfit = (sellPrice - costPrice) * safeSold;
-  const potentialRevenue = sellPrice * remaining;
-  const marketValue = marketPrice * remaining;
+  const realizedRevenue = itemSales.reduce((sum, sale) => sum + toNumber(sale.revenue), 0);
+  const realizedProfit = itemSales.reduce((sum, sale) => sum + toNumber(sale.profit), 0);
+  const potentialRevenue = estimatedPrice * remaining;
+  const marketValue = estimatedPrice * remaining;
   const remainingCost = costPrice * remaining;
-  const profitMargin = costPrice > 0 ? ((sellPrice - costPrice) / costPrice) * 100 : 0;
+  const profitMargin = costPrice > 0 ? ((estimatedPrice - costPrice) / costPrice) * 100 : 0;
   return {
-    costPrice, marketPrice, sellPrice, quantity,
+    costPrice, marketPrice, sellPrice: estimatedPrice, estimatedPrice, quantity,
     soldQuantity: safeSold,
+    soldFromRecords,
     remaining, totalCost, realizedRevenue,
     realizedProfit, potentialRevenue, marketValue,
     remainingCost, profitMargin
@@ -311,16 +314,20 @@ function renderPageNumbers(container, currentPage, totalPages, target) {
 
 function buildFallbackInventorySummary(rows = inventoryPageRows) {
   const calcRows = rows.map((row) => calc(row));
+  const realizedProfit = saleLogs.reduce((sum, sale) => sum + toNumber(sale.profit), 0);
+  const realizedRevenue = saleLogs.reduce((sum, sale) => sum + toNumber(sale.revenue), 0);
   return {
     total_products: rows.length,
     total_units: calcRows.reduce((sum, row) => sum + row.quantity, 0),
     sold_units: calcRows.reduce((sum, row) => sum + row.soldQuantity, 0),
     remaining_units: calcRows.reduce((sum, row) => sum + row.remaining, 0),
     total_cost: calcRows.reduce((sum, row) => sum + row.totalCost, 0),
-    realized_profit: calcRows.reduce((sum, row) => sum + row.realizedProfit, 0),
-    estimated_total_profit: calcRows.reduce((sum, row) => sum + ((row.sellPrice - row.costPrice) * row.quantity), 0),
+    realized_revenue: realizedRevenue,
+    realized_profit: realizedProfit,
+    estimated_total_profit: calcRows.reduce((sum, row) => sum + ((row.estimatedPrice - row.costPrice) * row.quantity), 0),
     remaining_market_value: calcRows.reduce((sum, row) => sum + row.marketValue, 0),
     remaining_sale_value: calcRows.reduce((sum, row) => sum + row.potentialRevenue, 0),
+    remaining_cost: calcRows.reduce((sum, row) => sum + row.remainingCost, 0),
     low_stock_count: calcRows.filter((row) => row.remaining > 0 && row.remaining <= 3).length
   };
 }
@@ -356,7 +363,7 @@ function getFilteredAndSortedItems(sourceItems = items) {
     const cb = calc(b);
     if (mode === 'stock_asc') return ca.remaining - cb.remaining;
     if (mode === 'profit_desc') return cb.realizedProfit - ca.realizedProfit;
-    if (mode === 'price_desc') return cb.sellPrice - ca.sellPrice;
+    if (mode === 'price_desc') return cb.estimatedPrice - ca.estimatedPrice;
     return new Date(b.updated_at || 0) - new Date(a.updated_at || 0);
   });
   return list;
@@ -501,10 +508,10 @@ function renderStats() {
     ['商品种类', toNumber(summary.total_products), `共录入 ${toNumber(summary.total_products)} 种商品`],
     ['进货总数量', toNumber(summary.total_units), `已售 ${toNumber(summary.sold_units)}，剩余 ${toNumber(summary.remaining_units)}`],
     ['总进货成本', money(summary.total_cost), '按全部库存统计'],
-    ['已实现利润', money(summary.realized_profit), '已售数量对应的利润'],
-    ['总利润（预计）', money(summary.estimated_total_profit), '按全部进货数量估算'],
-    ['剩余库存按市场价', money(summary.remaining_market_value), '市场价 × 剩余库存'],
-    ['剩余库存按售价', money(summary.remaining_sale_value), '售价 × 剩余库存']
+    ['已实现利润', money(summary.realized_profit), '按卖出记录真实成交价统计'],
+    ['总利润（预计）', money(summary.estimated_total_profit), '预估售价 - 进价'],
+    ['剩余库存预估货值', money(summary.remaining_market_value), '预估售价 × 剩余库存'],
+    ['剩余库存预计利润', money(toNumber(summary.remaining_sale_value) - toNumber(summary.remaining_cost)), '预估售价 - 剩余成本']
   ];
 
   stats.innerHTML = cards.map(([label, value, hint]) => `
@@ -683,8 +690,8 @@ function renderInventoryList() {
             <div class="inventory-sub">${highlightKeyword(item.category || '未分类', keyword)} · ${highlightKeyword(item.sku || '无 SKU', keyword)}</div>
           </div>
           <div class="inventory-side">
-            <div class="inventory-price">${moneyOrPending(c.sellPrice)}</div>
-            <div class="inventory-sub">售价</div>
+            <div class="inventory-price">${moneyOrPending(c.estimatedPrice)}</div>
+            <div class="inventory-sub">预估售价</div>
             <div class="inventory-remaining">${c.remaining} 件</div>
             <div class="inventory-sub">${c.remaining > 0 ? '可售库存' : '已售空'}</div>
           </div>
@@ -737,8 +744,8 @@ function renderLegacyInventory() {
           <td>${escapeHtml(item.category || '-')}</td>
           <td>${escapeHtml(item.sku || '-')}</td>
           <td>${money(c.costPrice)}</td>
-          <td>${moneyOrPending(c.marketPrice)}</td>
-          <td>${moneyOrPending(c.sellPrice)}</td>
+          <td>${moneyOrPending(c.estimatedPrice)}</td>
+          <td>${moneyOrPending(c.estimatedPrice)}</td>
           <td>${c.quantity}</td>
           <td>${c.soldQuantity}</td>
           <td>${c.remaining}<br>${stockTag(c.remaining)}</td>
@@ -770,8 +777,8 @@ function renderLegacyInventory() {
               <div class="mobile-item-sub">${highlightKeyword(item.category || '未分类', keyword)} · ${highlightKeyword(item.sku || '无 SKU', keyword)}</div>
             </div>
             <div style="text-align:right;">
-              <div class="mobile-item-price">${moneyOrPending(c.sellPrice)}</div>
-              <div class="mobile-item-sub">当前售价</div>
+              <div class="mobile-item-price">${moneyOrPending(c.estimatedPrice)}</div>
+              <div class="mobile-item-sub">预估售价</div>
             </div>
           </div>
           <div class="mobile-stock-banner ${lowClass}">
@@ -785,7 +792,7 @@ function renderLegacyInventory() {
             <div class="mini"><div class="k">分类</div><div class="v">${escapeHtml(item.category || '-')}</div></div>
             <div class="mini"><div class="k">SKU</div><div class="v">${escapeHtml(item.sku || '-')}</div></div>
             <div class="mini"><div class="k">进价</div><div class="v">${money(c.costPrice)}</div></div>
-            <div class="mini"><div class="k">售价</div><div class="v">${moneyOrPending(c.sellPrice)}</div></div>
+            <div class="mini"><div class="k">预估售价</div><div class="v">${moneyOrPending(c.estimatedPrice)}</div></div>
             <div class="mini"><div class="k">进货数量</div><div class="v">${c.quantity}</div></div>
             <div class="mini"><div class="k">已售 / 剩余</div><div class="v">${c.soldQuantity} / ${c.remaining}</div></div>
             <div class="mini"><div class="k">总成本</div><div class="v">${money(c.totalCost)}</div></div>
@@ -927,9 +934,9 @@ function openSaleModal(id) {
     return;
   }
   saleItemId = id;
-  saleModalDesc.textContent = `商品：${item.name}｜当前剩余库存：${c.remaining}｜默认售价：${money(c.sellPrice)}`;
+  saleModalDesc.textContent = `商品：${item.name}｜当前剩余库存：${c.remaining}｜默认预估售价：${money(c.estimatedPrice)}`;
   saleQuantityInput.value = '';
-  salePriceInput.value = c.sellPrice || '';
+  salePriceInput.value = c.estimatedPrice || '';
   if (saleTimeInput) saleTimeInput.value = toDatetimeLocalValue();
   saleNoteInput.value = '';
   saleModal.classList.add('show');
@@ -1018,6 +1025,8 @@ function resetForm() {
 }
 
 function getFormData() {
+  const existingItem = editingId ? items.find((item) => item.id === editingId) : null;
+  const marketPrice = toNumber(document.getElementById('marketPrice').value);
   return {
     id: editingId || crypto.randomUUID(),
     name: document.getElementById('name').value.trim(),
@@ -1025,10 +1034,10 @@ function getFormData() {
     sku: document.getElementById('sku').value.trim(),
     supplier: document.getElementById('supplier').value.trim(),
     cost_price: toNumber(document.getElementById('costPrice').value),
-    market_price: toNumber(document.getElementById('marketPrice').value),
-    sell_price: toNumber(document.getElementById('sellPrice').value),
+    market_price: marketPrice,
+    sell_price: toNumber(existingItem?.sell_price),
     quantity: Math.max(0, Math.floor(toNumber(document.getElementById('quantity').value))),
-    sold_quantity: Math.max(0, Math.floor(toNumber(document.getElementById('soldQuantity').value))),
+    sold_quantity: Math.max(0, Math.floor(toNumber(existingItem?.sold_quantity))),
     location: document.getElementById('location').value.trim(),
     note: document.getElementById('note').value.trim(),
     updated_at: new Date().toISOString()
@@ -1050,30 +1059,12 @@ function buildMergedItemPayload(existingItem, incomingItem) {
     supplier: existingItem.supplier || incomingItem.supplier,
     cost_price: toNumber(existingItem.cost_price || incomingItem.cost_price),
     market_price: toNumber(existingItem.market_price || incomingItem.market_price),
-    sell_price: toNumber(existingItem.sell_price || incomingItem.sell_price),
+    sell_price: toNumber(existingItem.sell_price),
     quantity: Math.max(0, Math.floor(toNumber(existingItem.quantity) + toNumber(incomingItem.quantity))),
-    sold_quantity: Math.max(0, Math.floor(toNumber(existingItem.sold_quantity) + toNumber(incomingItem.sold_quantity))),
+    sold_quantity: Math.max(0, Math.floor(toNumber(existingItem.sold_quantity))),
     location: existingItem.location || incomingItem.location,
     note: mergedNote,
     updated_at: new Date().toISOString()
-  };
-}
-
-function buildInitialSaleRecord(item, soldQuantity) {
-  const quantity = Math.max(0, Math.floor(toNumber(soldQuantity)));
-  const salePrice = toNumber(item.sell_price);
-  const costPrice = toNumber(item.cost_price);
-  return {
-    id: crypto.randomUUID(),
-    item_id: item.id,
-    item_name: item.name,
-    quantity,
-    sale_price: salePrice,
-    cost_price: costPrice,
-    revenue: salePrice * quantity,
-    profit: (salePrice - costPrice) * quantity,
-    note: '新增商品时录入的已售数量',
-    sold_at: new Date().toISOString()
   };
 }
 
@@ -1125,9 +1116,7 @@ function fillForm(item) {
   document.getElementById('supplier').value = item.supplier || '';
   document.getElementById('costPrice').value = item.cost_price ?? '';
   document.getElementById('marketPrice').value = item.market_price ?? '';
-  document.getElementById('sellPrice').value = item.sell_price ?? '';
   document.getElementById('quantity').value = item.quantity ?? '';
-  document.getElementById('soldQuantity').value = item.sold_quantity ?? '';
   document.getElementById('location').value = item.location || '';
   document.getElementById('note').value = item.note || '';
 
@@ -1193,13 +1182,13 @@ function exportCSV() {
       return;
     }
     const rows = [[
-      '商品名称','分类','SKU','供货渠道','进价','市场价','售价','进货数量','已售数量','剩余库存','总成本','已实现利润','利润率','存放位置','备注','更新时间'
+      '商品名称','分类','SKU','供货渠道','进价','预估售价','进货数量','已售数量','剩余库存','总成本','已实现利润','预估利润率','存放位置','备注','更新时间'
     ]];
     allItems.forEach(item => {
       const c = calc(item);
       rows.push([
         item.name, item.category, item.sku, item.supplier,
-        c.costPrice, c.marketPrice, c.sellPrice,
+        c.costPrice, c.estimatedPrice,
         c.quantity, c.soldQuantity, c.remaining,
         c.totalCost, c.realizedProfit, c.profitMargin,
         item.location, item.note, item.updated_at || ''
@@ -1239,13 +1228,12 @@ form.addEventListener('submit', async (e) => {
     alert('请填写商品名称。');
     return;
   }
-  if (data.sold_quantity > data.quantity) {
-    alert('已售数量不能大于进货数量。');
+  if (data.quantity < data.sold_quantity) {
+    alert(`进货数量不能小于已售数量（当前已售 ${data.sold_quantity}）。如果要修正已售，请先处理卖出记录。`);
     return;
   }
 
   let error = null;
-  let initialSaleRecord = null;
 
   if (editingId) {
     ({ error } = await supabaseClient.from('items').update(data).eq('id', data.id));
@@ -1256,14 +1244,8 @@ form.addEventListener('submit', async (e) => {
       if (shouldMerge) {
         const mergedData = buildMergedItemPayload(mergeCandidate, data);
         ({ error } = await supabaseClient.from('items').update(mergedData).eq('id', mergeCandidate.id));
-        if (!error && data.sold_quantity > 0) {
-          initialSaleRecord = buildInitialSaleRecord({ ...data, id: mergeCandidate.id, name: mergeCandidate.name || data.name }, data.sold_quantity);
-        }
       } else {
         ({ error } = await supabaseClient.from('items').insert(data));
-        if (!error && data.sold_quantity > 0) {
-          initialSaleRecord = buildInitialSaleRecord(data, data.sold_quantity);
-        }
       }
     } else {
       const differentCostItems = await findSameNameDifferentCostItems(data);
@@ -1282,22 +1264,12 @@ form.addEventListener('submit', async (e) => {
         if (!shouldCreateSeparateBatch) return;
       }
       ({ error } = await supabaseClient.from('items').insert(data));
-      if (!error && data.sold_quantity > 0) {
-        initialSaleRecord = buildInitialSaleRecord(data, data.sold_quantity);
-      }
     }
   }
 
   if (error) {
     alert((editingId ? '更新' : '保存') + '失败：' + error.message);
     return;
-  }
-
-  if (initialSaleRecord) {
-    const { error: saleError } = await supabaseClient.from('sales').insert(initialSaleRecord);
-    if (saleError) {
-      alert('商品已保存，但自动生成卖出记录失败：' + saleError.message);
-    }
   }
   await applyQuickEntryMode();
   await refreshInventory({ resetPage: !editingId });
@@ -1472,7 +1444,7 @@ saleForm.addEventListener('submit', async (e) => {
   if (!item) return closeSaleModal();
   const c = calc(item);
   const saleQty = Math.max(1, Math.floor(toNumber(saleQuantityInput.value)));
-  const salePrice = toNumber(salePriceInput.value || item.sell_price);
+  const salePrice = toNumber(salePriceInput.value || c.estimatedPrice);
   const soldAt = getSaleTimeIso();
   const saleNote = saleNoteInput.value.trim();
   if (!soldAt) return;
@@ -1484,7 +1456,6 @@ saleForm.addEventListener('submit', async (e) => {
   const nextSoldQuantity = toNumber(item.sold_quantity) + saleQty;
   const updatedItem = {
     sold_quantity: nextSoldQuantity,
-    sell_price: salePrice,
     updated_at: new Date().toISOString(),
     note: saleNote ? `${item.note ? item.note + '\n' : ''}[卖出 ${saleQty} 件 @ ${salePrice}] ${saleNote}` : item.note
   };
