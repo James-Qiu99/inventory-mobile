@@ -43,8 +43,11 @@ const clearSearchBtn = document.getElementById('clearSearchBtn');
 const emptyStateTitle = document.getElementById('emptyStateTitle');
 const emptyStateText = document.getElementById('emptyStateText');
 const pageInfo = document.getElementById('pageInfo');
+const pageSelect = document.getElementById('pageSelect');
+const firstPageBtn = document.getElementById('firstPageBtn');
 const prevPageBtn = document.getElementById('prevPageBtn');
 const nextPageBtn = document.getElementById('nextPageBtn');
+const lastPageBtn = document.getElementById('lastPageBtn');
 const salesPageInfo = document.getElementById('salesPageInfo');
 const prevSalesPageBtn = document.getElementById('prevSalesPageBtn');
 const nextSalesPageBtn = document.getElementById('nextSalesPageBtn');
@@ -56,6 +59,7 @@ const quickTopBtn = document.getElementById('quickTopBtn');
 const categoryChips = [...document.querySelectorAll('.category-chip')];
 const qtyChips = [...document.querySelectorAll('.qty-chip')];
 const entryReadyBanner = document.getElementById('entryReadyBanner');
+const profitMonthSelect = document.getElementById('profitMonthSelect');
 
 function scrollToSection(id, offset = 0) {
   const el = document.getElementById(id);
@@ -101,6 +105,7 @@ let inventoryRequestSeq = 0;
 let inventoryReloadTimer = null;
 let inventoryMode = 'server';
 let salesPage = 1;
+let selectedProfitMonth = getMonthKey(new Date());
 
 function toNumber(value) {
   const n = Number(value);
@@ -117,6 +122,28 @@ function moneyOrPending(value, label = '待补') {
 
 function percent(n) {
   return toNumber(n).toLocaleString('zh-CN', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+}
+
+function getMonthKey(date = new Date()) {
+  const d = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(d.getTime())) return getMonthKey(new Date());
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function formatMonthLabel(monthKey) {
+  const [year, month] = String(monthKey || '').split('-');
+  if (!year || !month) return '未知月份';
+  return `${year}年${Number(month)}月`;
+}
+
+function getMonthRange(monthKey = selectedProfitMonth) {
+  const [year, month] = String(monthKey || getMonthKey()).split('-').map(Number);
+  const y = Number.isFinite(year) ? year : new Date().getFullYear();
+  const m = Number.isFinite(month) ? month - 1 : new Date().getMonth();
+  return {
+    start: new Date(y, m, 1, 0, 0, 0, 0).getTime(),
+    end: new Date(y, m + 1, 0, 23, 59, 59, 999).getTime()
+  };
 }
 
 function escapeHtml(str = '') {
@@ -291,11 +318,22 @@ function updatePaginationControls() {
   const totalPages = getInventoryPageCount();
   if (pageInfo) {
     pageInfo.textContent = totalPages
-      ? `共 ${inventoryTotalCount} 条`
+      ? `第 ${inventoryPage} / ${totalPages} 页 · 共 ${inventoryTotalCount} 条`
       : '暂无匹配库存';
   }
+  if (pageSelect) {
+    pageSelect.innerHTML = totalPages
+      ? Array.from({ length: totalPages }, (_, index) => {
+          const page = index + 1;
+          return `<option value="${page}" ${page === inventoryPage ? 'selected' : ''}>第 ${page} 页</option>`;
+        }).join('')
+      : '<option value="">无可选页</option>';
+    pageSelect.disabled = loading || totalPages === 0;
+  }
+  if (firstPageBtn) firstPageBtn.disabled = loading || inventoryPage <= 1 || totalPages === 0;
   if (prevPageBtn) prevPageBtn.disabled = loading || inventoryPage <= 1 || totalPages === 0;
   if (nextPageBtn) nextPageBtn.disabled = loading || inventoryPage >= totalPages || totalPages === 0;
+  if (lastPageBtn) lastPageBtn.disabled = loading || inventoryPage >= totalPages || totalPages === 0;
 }
 
 function updateSalesPaginationControls() {
@@ -330,7 +368,7 @@ function renderSearchMeta() {
 function renderWorkbench() {
   if (!workbenchGrid) return;
   const summary = getInventorySummary();
-  const period = computePeriodStats();
+  const period = computePeriodStats(getMonthKey(new Date()));
   const totalRemaining = toNumber(summary.remaining_units);
   const lowCount = toNumber(summary.low_stock_count);
   const tiles = [
@@ -455,8 +493,29 @@ function getTodayMonthRange() {
   return {dStart,dEnd,mStart,mEnd};
 }
 
-function computePeriodStats() {
-  const {dStart,dEnd,mStart,mEnd} = getTodayMonthRange();
+function getAvailableProfitMonths() {
+  const months = new Set([getMonthKey(new Date())]);
+  saleLogs.forEach((row) => {
+    const d = new Date(row.sold_at);
+    if (!Number.isNaN(d.getTime())) months.add(getMonthKey(d));
+  });
+  return [...months].sort((a, b) => b.localeCompare(a));
+}
+
+function updateProfitMonthSelect() {
+  if (!profitMonthSelect) return;
+  const months = getAvailableProfitMonths();
+  if (!months.includes(selectedProfitMonth)) {
+    selectedProfitMonth = months[0] || getMonthKey(new Date());
+  }
+  profitMonthSelect.innerHTML = months.map((month) => (
+    `<option value="${month}" ${month === selectedProfitMonth ? 'selected' : ''}>${formatMonthLabel(month)}</option>`
+  )).join('');
+}
+
+function computePeriodStats(monthKey = selectedProfitMonth) {
+  const {dStart,dEnd} = getTodayMonthRange();
+  const {start: mStart, end: mEnd} = getMonthRange(monthKey);
   const dayLogs = saleLogs.filter(x => { const t = new Date(x.sold_at).getTime(); return t>=dStart && t<=dEnd; });
   const monthLogs = saleLogs.filter(x => { const t = new Date(x.sold_at).getTime(); return t>=mStart && t<=mEnd; });
   const sum = (arr, key) => arr.reduce((a,b)=>a+toNumber(b[key]),0);
@@ -471,14 +530,16 @@ function computePeriodStats() {
 }
 
 function renderPeriodStats() {
+  updateProfitMonthSelect();
   const p = computePeriodStats();
+  const monthLabel = formatMonthLabel(selectedProfitMonth);
   const cards = [
     ['今日卖出件数', p.dayQty, '按卖出记录统计'],
     ['今日销售额', money(p.dayRevenue), '成交单价 × 数量'],
     ['今日利润', money(p.dayProfit), '成交价 - 成本价'],
-    ['本月卖出件数', p.monthQty, '自然月统计'],
-    ['本月销售额', money(p.monthRevenue), '自然月累计'],
-    ['本月利润', money(p.monthProfit), '自然月累计']
+    [`${monthLabel}卖出件数`, p.monthQty, '按所选月份统计'],
+    [`${monthLabel}销售额`, money(p.monthRevenue), '所选月份累计'],
+    [`${monthLabel}利润`, money(p.monthProfit), '所选月份累计']
   ];
   periodStats.innerHTML = cards.map(([label, value, hint]) => `
     <div class="stat">
@@ -1089,18 +1150,33 @@ searchInput.addEventListener('keydown', (e) => {
 stockFilter.addEventListener('change', () => refreshInventory({ resetPage: true }));
 if (clearSearchBtn) clearSearchBtn.addEventListener('click', () => { searchInput.value = ''; updateSearchClearButton(); refreshInventory({ resetPage: true }); searchInput.focus(); });
 if (sortFilter) sortFilter.addEventListener('change', () => refreshInventory({ resetPage: true }));
-if (prevPageBtn) prevPageBtn.addEventListener('click', () => {
-  if (inventoryPage <= 1) return;
-  inventoryPage -= 1;
-  refreshInventory();
+async function goToInventoryPage(page) {
+  const totalPages = getInventoryPageCount();
+  if (!totalPages) return;
+  const targetPage = Math.min(Math.max(1, Math.floor(toNumber(page))), totalPages);
+  if (targetPage === inventoryPage) return;
+  inventoryPage = targetPage;
+  await refreshInventory();
   scrollToAnchoredSection('listSection');
+}
+
+if (firstPageBtn) firstPageBtn.addEventListener('click', () => goToInventoryPage(1));
+if (prevPageBtn) prevPageBtn.addEventListener('click', () => {
+  goToInventoryPage(inventoryPage - 1);
 });
 if (nextPageBtn) nextPageBtn.addEventListener('click', () => {
-  const totalPages = getInventoryPageCount();
-  if (totalPages && inventoryPage >= totalPages) return;
-  inventoryPage += 1;
-  refreshInventory();
-  scrollToAnchoredSection('listSection');
+  goToInventoryPage(inventoryPage + 1);
+});
+if (lastPageBtn) lastPageBtn.addEventListener('click', () => {
+  goToInventoryPage(getInventoryPageCount());
+});
+if (pageSelect) pageSelect.addEventListener('change', () => {
+  goToInventoryPage(pageSelect.value);
+});
+if (profitMonthSelect) profitMonthSelect.addEventListener('change', () => {
+  selectedProfitMonth = profitMonthSelect.value || getMonthKey(new Date());
+  renderWorkbench();
+  renderPeriodStats();
 });
 if (prevSalesPageBtn) prevSalesPageBtn.addEventListener('click', () => {
   if (salesPage <= 1) return;
