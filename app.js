@@ -1004,6 +1004,24 @@ function buildMergedItemPayload(existingItem, incomingItem) {
   };
 }
 
+function buildInitialSaleRecord(item, soldQuantity) {
+  const quantity = Math.max(0, Math.floor(toNumber(soldQuantity)));
+  const salePrice = toNumber(item.sell_price);
+  const costPrice = toNumber(item.cost_price);
+  return {
+    id: crypto.randomUUID(),
+    item_id: item.id,
+    item_name: item.name,
+    quantity,
+    sale_price: salePrice,
+    cost_price: costPrice,
+    revenue: salePrice * quantity,
+    profit: (salePrice - costPrice) * quantity,
+    note: '新增商品时录入的已售数量',
+    sold_at: new Date().toISOString()
+  };
+}
+
 async function findMergeCandidate(data) {
   const { data: matches, error } = await supabaseClient
     .from('items')
@@ -1153,6 +1171,7 @@ form.addEventListener('submit', async (e) => {
   }
 
   let error = null;
+  let initialSaleRecord = null;
 
   if (editingId) {
     ({ error } = await supabaseClient.from('items').update(data).eq('id', data.id));
@@ -1163,17 +1182,33 @@ form.addEventListener('submit', async (e) => {
       if (shouldMerge) {
         const mergedData = buildMergedItemPayload(mergeCandidate, data);
         ({ error } = await supabaseClient.from('items').update(mergedData).eq('id', mergeCandidate.id));
+        if (!error && data.sold_quantity > 0) {
+          initialSaleRecord = buildInitialSaleRecord({ ...data, id: mergeCandidate.id, name: mergeCandidate.name || data.name }, data.sold_quantity);
+        }
       } else {
         ({ error } = await supabaseClient.from('items').insert(data));
+        if (!error && data.sold_quantity > 0) {
+          initialSaleRecord = buildInitialSaleRecord(data, data.sold_quantity);
+        }
       }
     } else {
       ({ error } = await supabaseClient.from('items').insert(data));
+      if (!error && data.sold_quantity > 0) {
+        initialSaleRecord = buildInitialSaleRecord(data, data.sold_quantity);
+      }
     }
   }
 
   if (error) {
     alert((editingId ? '更新' : '保存') + '失败：' + error.message);
     return;
+  }
+
+  if (initialSaleRecord) {
+    const { error: saleError } = await supabaseClient.from('sales').insert(initialSaleRecord);
+    if (saleError) {
+      alert('商品已保存，但自动生成卖出记录失败：' + saleError.message);
+    }
   }
   await applyQuickEntryMode();
   await refreshInventory({ resetPage: !editingId });
