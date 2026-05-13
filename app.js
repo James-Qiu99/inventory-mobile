@@ -32,6 +32,7 @@ const saleModal = document.getElementById('saleModal');
 const saleForm = document.getElementById('saleForm');
 const saleModalDesc = document.getElementById('saleModalDesc');
 const saleCancelBtn = document.getElementById('saleCancelBtn');
+const saleSubmitBtn = document.getElementById('saleSubmitBtn');
 const saleQuantityInput = document.getElementById('saleQuantity');
 const salePriceInput = document.getElementById('salePrice');
 const saleTimeInput = document.getElementById('saleTime');
@@ -63,7 +64,6 @@ const quickListBtn = document.getElementById('quickListBtn');
 const quickSalesBtn = document.getElementById('quickSalesBtn');
 const quickTopBtn = document.getElementById('quickTopBtn');
 const categoryChips = [...document.querySelectorAll('.category-chip')];
-const qtyChips = [...document.querySelectorAll('.qty-chip')];
 const entryReadyBanner = document.getElementById('entryReadyBanner');
 const profitMonthSelect = document.getElementById('profitMonthSelect');
 
@@ -112,6 +112,7 @@ let inventoryReloadTimer = null;
 let inventoryMode = 'server';
 let salesPage = 1;
 let selectedProfitMonth = getMonthKey(new Date());
+let saleSubmitting = false;
 
 function toNumber(value) {
   const n = Number(value);
@@ -959,19 +960,38 @@ function openSaleModal(id) {
     return;
   }
   saleItemId = id;
-  saleModalDesc.textContent = `商品：${item.name}｜当前剩余库存：${c.remaining}｜默认预估售价：${money(c.estimatedPrice)}`;
-  saleQuantityInput.value = '';
+  setSaleSubmitting(false);
+  saleModalDesc.innerHTML = `
+    <strong>${escapeHtml(item.name)}</strong>
+    当前剩余库存：${c.remaining} 件<br>
+    默认预估售价：${money(c.estimatedPrice)}
+  `;
+  saleQuantityInput.value = '1';
+  saleQuantityInput.max = String(c.remaining);
   salePriceInput.value = c.estimatedPrice || '';
   if (saleTimeInput) saleTimeInput.value = toDatetimeLocalValue();
   saleNoteInput.value = '';
   saleModal.classList.add('show');
-  setTimeout(() => saleQuantityInput.focus(), 50);
+  setTimeout(() => {
+    saleQuantityInput.focus();
+    saleQuantityInput.select();
+  }, 80);
 }
 
 function closeSaleModal() {
   saleItemId = null;
+  setSaleSubmitting(false);
+  saleQuantityInput.removeAttribute('max');
   saleForm.reset();
   saleModal.classList.remove('show');
+}
+
+function setSaleSubmitting(active) {
+  saleSubmitting = !!active;
+  if (saleSubmitBtn) {
+    saleSubmitBtn.disabled = saleSubmitting;
+    saleSubmitBtn.textContent = saleSubmitting ? '正在登记...' : '确认登记卖出';
+  }
 }
 
 function setActiveCategoryChip(value = '') {
@@ -1461,10 +1481,13 @@ restoreFile.addEventListener('change', async (e) => {
 
 saleCancelBtn.addEventListener('click', closeSaleModal);
 saleModal.addEventListener('click', (e) => {
-  if (e.target === saleModal) closeSaleModal();
+  if (e.target === saleModal) {
+    saleQuantityInput?.focus();
+  }
 });
 saleForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+  if (saleSubmitting) return;
   const item = items.find(i => i.id === saleItemId);
   if (!item) return closeSaleModal();
   const c = calc(item);
@@ -1478,55 +1501,60 @@ saleForm.addEventListener('submit', async (e) => {
     return;
   }
 
-  const nextSoldQuantity = toNumber(item.sold_quantity) + saleQty;
-  const updatedItem = {
-    sold_quantity: nextSoldQuantity,
-    updated_at: new Date().toISOString(),
-    note: saleNote ? `${item.note ? item.note + '\n' : ''}[卖出 ${saleQty} 件 @ ${salePrice}] ${saleNote}` : item.note
-  };
+  setSaleSubmitting(true);
+  try {
+    const nextSoldQuantity = toNumber(item.sold_quantity) + saleQty;
+    const updatedItem = {
+      sold_quantity: nextSoldQuantity,
+      updated_at: new Date().toISOString(),
+      note: saleNote ? `${item.note ? item.note + '\n' : ''}[卖出 ${saleQty} 件 @ ${salePrice}] ${saleNote}` : item.note
+    };
 
-  const { error: itemError } = await supabaseClient.from('items').update(updatedItem).eq('id', item.id);
-  if (itemError) {
-    alert('更新库存失败：' + itemError.message);
-    return;
-  }
+    const { error: itemError } = await supabaseClient.from('items').update(updatedItem).eq('id', item.id);
+    if (itemError) {
+      alert('更新库存失败：' + itemError.message);
+      return;
+    }
 
-  const saleRecord = {
-    id: crypto.randomUUID(),
-    item_id: item.id,
-    item_name: item.name,
-    quantity: saleQty,
-    sale_price: salePrice,
-    cost_price: toNumber(item.cost_price),
-    revenue: salePrice * saleQty,
-    profit: (salePrice - toNumber(item.cost_price)) * saleQty,
-    note: saleNote,
-    sold_at: soldAt
-  };
+    const saleRecord = {
+      id: crypto.randomUUID(),
+      item_id: item.id,
+      item_name: item.name,
+      quantity: saleQty,
+      sale_price: salePrice,
+      cost_price: toNumber(item.cost_price),
+      revenue: salePrice * saleQty,
+      profit: (salePrice - toNumber(item.cost_price)) * saleQty,
+      note: saleNote,
+      sold_at: soldAt
+    };
 
-  const { error: saleError } = await supabaseClient.from('sales').insert(saleRecord);
-  if (saleError) {
-    const { error: rollbackError } = await supabaseClient
-      .from('items')
-      .update({
-        sold_quantity: toNumber(item.sold_quantity),
-        note: item.note || '',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', item.id);
-    if (rollbackError) {
-      alert('保存卖出记录失败，且库存回滚失败：' + rollbackError.message);
+    const { error: saleError } = await supabaseClient.from('sales').insert(saleRecord);
+    if (saleError) {
+      const { error: rollbackError } = await supabaseClient
+        .from('items')
+        .update({
+          sold_quantity: toNumber(item.sold_quantity),
+          note: item.note || '',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', item.id);
+      if (rollbackError) {
+        alert('保存卖出记录失败，且库存回滚失败：' + rollbackError.message);
+        await refreshInventory();
+        return;
+      }
+      alert('保存卖出记录失败：' + saleError.message);
       await refreshInventory();
       return;
     }
-    alert('保存卖出记录失败：' + saleError.message);
-    await refreshInventory();
-    return;
-  }
 
-  await applyQuickEntryMode();
-  await refreshInventory();
-  closeSaleModal();
+    await applyQuickEntryMode();
+    await refreshInventory();
+    closeSaleModal();
+  } finally {
+    setSaleSubmitting(false);
+  }
 });
 
 clearAllBtn.addEventListener('click', async () => {
@@ -1566,12 +1594,6 @@ categoryChips.forEach((chip) => {
     const categoryInput = document.getElementById('category');
     categoryInput.value = chip.dataset.category || '';
     setActiveCategoryChip(chip.dataset.category || '');
-  });
-});
-
-qtyChips.forEach((chip) => {
-  chip.addEventListener('click', () => {
-    saleQuantityInput.value = chip.dataset.qty || '1';
   });
 });
 

@@ -368,9 +368,55 @@
     .modal::before { content:""; display:block; width:42px; height:5px; border-radius:999px; background:rgba(107,114,128,.28); margin:0 auto 12px; }
     .modal h3 { margin: 0 0 8px; font-size: 22px; }
     .modal p { margin: 0 0 14px; color: var(--muted); line-height: 1.6; }
-    .sale-primary-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-    .sale-qty-chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
-    .qty-chip { background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; border-radius:999px; padding:10px 12px; font-size:14px; font-weight:700; }
+    .sale-modal {
+      display: flex;
+      flex-direction: column;
+      max-height: min(92vh, 720px);
+      overflow: hidden;
+    }
+    .sale-modal h3 { flex: 0 0 auto; }
+    .sale-modal p { flex: 0 0 auto; }
+    .sale-form-body {
+      overflow: auto;
+      padding: 2px 2px 14px;
+      overscroll-behavior: contain;
+    }
+    .sale-form-body .form-grid { gap: 14px; }
+    .sale-summary {
+      border: 1px solid #dbeafe;
+      background: #f8fbff;
+      border-radius: 16px;
+      padding: 12px 14px;
+      font-size: 15px;
+      line-height: 1.55;
+      color: #374151;
+      margin-bottom: 14px;
+    }
+    .sale-summary strong { display: block; color: #111827; font-size: 17px; margin-bottom: 2px; }
+    .sale-quantity-input {
+      min-height: 64px;
+      font-size: 24px;
+      font-weight: 800;
+      text-align: center;
+      border-color: #bfdbfe;
+      background: #f8fbff;
+    }
+    .sale-actions {
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(0, .75fr);
+      gap: 12px;
+      margin-top: 0;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+      flex: 0 0 auto;
+      background: rgba(255,255,255,.96);
+    }
+    .sale-actions button {
+      min-height: 56px;
+      width: 100%;
+      box-shadow: none;
+    }
+    .sale-actions .ghost { background:#f3f4f6; color:#4b5563; }
     .section-anchor { scroll-margin-top: 24px; }
     .quick-actions {
       display: none;
@@ -554,8 +600,14 @@
       input, textarea, select, button { font-size: 16px; }
       input, textarea, select { min-height: 52px; }
       .month-select { width: 100%; }
-      .modal { padding: 16px 16px 24px; border-radius: 22px 22px 0 0; }
-      .qty-chip { flex: 1 1 calc(50% - 8px); justify-content: center; }
+      .modal { padding: 16px 16px max(20px, env(safe-area-inset-bottom)); border-radius: 22px 22px 0 0; }
+      .sale-modal { max-height: 88vh; }
+      .sale-modal .form-grid { grid-template-columns: 1fr; }
+      .sale-summary { font-size: 14px; margin-bottom: 12px; }
+      .sale-quantity-input { min-height: 68px; font-size: 28px; }
+      .sale-actions { grid-template-columns: 1fr; gap: 10px; padding-top: 12px; }
+      .sale-actions button { min-height: 58px; font-size: 17px; }
+      .sale-actions .ghost { min-height: 50px; }
       #saveAndNextBtn { width: 100%; }
       .pagination-bar { flex-direction: column; align-items: stretch; }
       .pagination-actions { justify-content: center; }
@@ -787,24 +839,22 @@
   </div>
 
   <div id="saleModal" class="modal-backdrop">
-    <div class="modal">
+    <div class="modal sale-modal">
       <h3>登记卖出</h3>
-      <p id="saleModalDesc">记录卖出数量后，已售数量会增加，剩余库存会减少，利润统计也会同步更新。</p>
+      <div id="saleModalDesc" class="sale-summary">
+        <strong>选择商品后显示库存</strong>
+        记录卖出数量后，已售数量会增加，剩余库存会减少。
+      </div>
       <form id="saleForm">
+        <div class="sale-form-body">
         <div class="form-grid">
           <div class="field">
             <label for="saleQuantity">本次卖出数量</label>
-            <input id="saleQuantity" type="number" min="1" step="1" placeholder="例如 1" required />
-            <div class="sale-qty-chips">
-              <button type="button" class="qty-chip" data-qty="1">卖 1 件</button>
-              <button type="button" class="qty-chip" data-qty="2">卖 2 件</button>
-              <button type="button" class="qty-chip" data-qty="3">卖 3 件</button>
-              <button type="button" class="qty-chip" data-qty="5">卖 5 件</button>
-            </div>
+            <input id="saleQuantity" class="sale-quantity-input" type="number" inputmode="numeric" min="1" step="1" placeholder="1" autocomplete="off" required />
           </div>
           <div class="field">
             <label for="salePrice">本次成交单价（默认预估售价）</label>
-            <input id="salePrice" type="number" min="0" step="0.01" placeholder="0" />
+            <input id="salePrice" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0" />
           </div>
           <div class="field full">
             <label for="saleTime">卖出时间</label>
@@ -815,8 +865,9 @@
             <textarea id="saleNote" placeholder="例如：熟客、线下成交、优惠了 10 元"></textarea>
           </div>
         </div>
-        <div class="actions">
-          <button type="submit" class="primary">确认登记卖出</button>
+        </div>
+        <div class="actions sale-actions">
+          <button type="submit" class="primary" id="saleSubmitBtn">确认登记卖出</button>
           <button type="button" class="ghost" id="saleCancelBtn">取消</button>
         </div>
       </form>
@@ -825,6 +876,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./supabase-config.js?v=20260509j"></script>
-  <script src="./app.js?v=20260509j"></script>
+  <script src="./app.js?v=20260513a"></script>
 </body>
 </html>
