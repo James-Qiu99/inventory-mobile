@@ -9,18 +9,26 @@
   <title>库存管理小工具（手机网页版）</title>
   <style>
     :root {
-      --bg: #f2f2f7;
-      --card: rgba(255,255,255,.88);
+      --bg: #f4f6f8;
+      --surface: #ffffff;
+      --surface-soft: #f8fafc;
+      --card: rgba(255,255,255,.94);
       --text: #111827;
       --muted: #6b7280;
-      --line: rgba(17,24,39,.08);
-      --primary: #0a84ff;
-      --primary-dark: #0066cc;
-      --danger: #dc2626;
-      --success: #059669;
-      --warn: #d97706;
-      --shadow: 0 12px 30px rgba(15,23,42,.08);
-      --radius: 20px;
+      --muted-strong: #4b5563;
+      --line: rgba(15,23,42,.10);
+      --primary: #0f766e;
+      --primary-dark: #115e59;
+      --primary-soft: #e6fffb;
+      --danger: #b91c1c;
+      --danger-soft: #fef2f2;
+      --success: #047857;
+      --warn: #b45309;
+      --warn-soft: #fff7ed;
+      --shadow: 0 10px 24px rgba(15,23,42,.08);
+      --shadow-soft: 0 1px 2px rgba(15,23,42,.06);
+      --radius: 8px;
+      --control-radius: 10px;
     }
 
     * { box-sizing: border-box; }
@@ -30,9 +38,9 @@
 
     .container { max-width: 1200px; margin: 0 auto; padding-top: 74px; }
     .hero {
-      background: linear-gradient(135deg, #1d4ed8, #0f766e);
+      background: #0f172a;
       color: white;
-      border-radius: 24px;
+      border-radius: 12px;
       padding: 18px;
       box-shadow: var(--shadow);
       margin-bottom: 16px;
@@ -51,9 +59,10 @@
     .hero p { margin: 0; opacity: .92; line-height: 1.7; font-size: 19px; }
     .dashboard-hero { padding: 20px 18px 22px; }
     .dashboard-headline { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom: 10px; }
-    .dashboard-kicker { font-size: 12px; font-weight: 800; letter-spacing: .08em; opacity: .78; text-transform: uppercase; }
+    .dashboard-kicker { font-size: 12px; font-weight: 800; letter-spacing: .08em; opacity: .72; text-transform: uppercase; }
     .dashboard-title { margin: 4px 0 0; font-size: 26px; line-height: 1.1; font-weight: 800; }
-    .dashboard-pill { display:inline-flex; align-items:center; justify-content:center; min-width:44px; height:44px; border-radius:14px; background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.22); font-size:20px; box-shadow: inset 0 1px 0 rgba(255,255,255,.16); }
+    .dashboard-subtitle { margin-top: 8px; color: rgba(255,255,255,.72); font-size: 14px; line-height: 1.5; }
+    .dashboard-pill { display:inline-flex; align-items:center; justify-content:center; min-width:44px; height:44px; border-radius:10px; background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.18); font-size:12px; font-weight:800; letter-spacing:.08em; box-shadow: inset 0 1px 0 rgba(255,255,255,.12); }
 
     .grid { display: grid; gap: 16px; }
     .grid.top { grid-template-columns: 1.1fr .9fr; }
@@ -61,7 +70,7 @@
       background: var(--card);
       border: 1px solid var(--line);
       border-radius: var(--radius);
-      box-shadow: var(--shadow);
+      box-shadow: var(--shadow-soft);
       padding: 18px;
       transition: transform .18s ease, box-shadow .18s ease;
       backdrop-filter: blur(18px);
@@ -78,14 +87,15 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 12px;
     }
+    .form-grid.with-top-gap { margin-top: 12px; }
     .field { display: flex; flex-direction: column; gap: 8px; }
     .field.full { grid-column: 1 / -1; }
     label { font-size: 17px; color: var(--muted); }
     input, textarea, select {
       width: 100%;
       border: 1px solid rgba(17,24,39,.08);
-      background: rgba(255,255,255,.92);
-      border-radius: 16px;
+      background: var(--surface);
+      border-radius: var(--control-radius);
       padding: 14px 16px;
       font-size: 18px;
       outline: none;
@@ -93,8 +103,8 @@
       box-shadow: inset 0 1px 0 rgba(255,255,255,.5);
     }
     input:focus, textarea:focus, select:focus {
-      border-color: rgba(10,132,255,.55);
-      box-shadow: 0 0 0 4px rgba(10,132,255,.12);
+      border-color: rgba(15,118,110,.58);
+      box-shadow: 0 0 0 4px rgba(15,118,110,.12);
       background: #fff;
     }
     textarea { min-height: 84px; resize: vertical; }
@@ -108,7 +118,7 @@
     .actions { margin-top: 14px; }
     button, .button {
       border: 0;
-      border-radius: 16px;
+      border-radius: var(--control-radius);
       padding: 13px 18px;
       font-size: 17px;
       font-weight: 700;
@@ -121,14 +131,14 @@
       gap: 6px;
       box-shadow: 0 8px 18px rgba(15,23,42,.06);
     }
-    .primary { background: linear-gradient(180deg, #2491ff, #0a84ff); color: white; }
-    .primary:hover { background: linear-gradient(180deg, #1f88f2, #0077e6); }
-    .secondary { background: rgba(10,132,255,.10); color: #0a84ff; }
-    .secondary:hover { background: rgba(10,132,255,.16); }
+    .primary { background: var(--primary); color: white; }
+    .primary:hover { background: var(--primary-dark); }
+    .secondary { background: var(--primary-soft); color: var(--primary-dark); }
+    .secondary:hover { background: #ccfbf1; }
     .ghost { background: rgba(17,24,39,.05); color: #111827; }
     .ghost:hover { background: rgba(17,24,39,.08); }
-    .danger { background: rgba(220,38,38,.10); color: #b91c1c; }
-    .danger:hover { background: rgba(220,38,38,.16); }
+    .danger { background: var(--danger-soft); color: var(--danger); }
+    .danger:hover { background: #fee2e2; }
     .form-actions { display:grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
     .form-actions .primary,
     .form-actions .secondary { min-width: 0; width: 100%; padding: 12px 14px; font-size: 15px; box-shadow:none; }
@@ -142,10 +152,10 @@
     }
     .stat {
       border: 1px solid var(--line);
-      border-radius: 18px;
+      border-radius: var(--radius);
       padding: 16px;
-      background: rgba(255,255,255,.78);
-      box-shadow: 0 10px 24px rgba(15,23,42,.05);
+      background: var(--surface);
+      box-shadow: var(--shadow-soft);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
     }
@@ -158,11 +168,14 @@
       margin-bottom: 14px;
     }
     .workbench-grid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px; margin-top:16px; }
-    .workbench-tile { min-height: 108px; padding:16px; border-radius:18px; background:rgba(255,255,255,.18); color:#fff; border:1px solid rgba(255,255,255,.16); box-shadow:none; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); text-align:left; width:100%; display:flex; flex-direction:column; justify-content:space-between; }
+    .workbench-tile { min-height: 108px; padding:14px; border-radius:10px; background:rgba(255,255,255,.10); color:#fff; border:1px solid rgba(255,255,255,.14); box-shadow:none; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); text-align:left; width:100%; display:flex; flex-direction:column; justify-content:space-between; }
     .workbench-tile:hover { transform: translateY(-1px); }
     .workbench-tile .k { font-size:14px; color:rgba(255,255,255,.82); margin-bottom:14px; display:flex; align-items:center; gap:6px; letter-spacing:.01em; }
-    .workbench-tile .v { font-size:30px; font-weight:800; line-height:1; }
-    .workbench-tile .s { display:none; }
+    .workbench-tile .tile-icon { width:8px; height:8px; border-radius:999px; background:#5eead4; flex:0 0 auto; }
+    .workbench-tile.alert .tile-icon { background:#fbbf24; }
+    .workbench-tile.strong { background:rgba(255,255,255,.16); border-color:rgba(255,255,255,.24); }
+    .workbench-tile .v { font-size:28px; font-weight:800; line-height:1.08; word-break:break-word; }
+    .workbench-tile .s { margin-top:10px; font-size:12px; color:rgba(255,255,255,.68); }
     .toolbar-left, .toolbar-right {
       display: flex;
       flex-wrap: wrap;
@@ -170,11 +183,60 @@
       align-items: center;
     }
     .toolbar input, .toolbar select { min-width: 160px; }
+    .section-block { margin-top: 16px; }
+    .section-block.tight-top { margin-top: -2px; }
+    .section-block.last { margin-bottom: 8px; }
+    .section-title {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      margin:0;
+      font-size:22px;
+      line-height:1.25;
+    }
+    .section-marker {
+      width:10px;
+      height:10px;
+      border-radius:999px;
+      background:var(--primary);
+      box-shadow:0 0 0 4px rgba(15,118,110,.10);
+      flex:0 0 auto;
+    }
+    .section-marker.warn { background:var(--warn); box-shadow:0 0 0 4px rgba(180,83,9,.12); }
+    .section-marker.neutral { background:#64748b; box-shadow:0 0 0 4px rgba(100,116,139,.12); }
+    .toolbar.compact { margin-top:12px; }
+    .toolbar.sales-filter { margin-top:8px; margin-bottom:10px; }
+    .full-width-row { width:100%; justify-content:flex-start; }
+    .sync-status.full-width-row { margin-top:0; }
+    .stack-gap-sm { margin-top:12px; }
+    .low-stock-slot { margin-top:12px; }
+    .search-meta { margin-bottom:10px; }
+    .hidden-file { display:none; }
+    .empty-icon {
+      width:40px;
+      height:40px;
+      margin:0 auto 8px;
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:linear-gradient(180deg, #fff, var(--surface-soft));
+      position:relative;
+    }
+    .empty-icon::before,
+    .empty-icon::after {
+      content:"";
+      position:absolute;
+      left:10px;
+      right:10px;
+      border-top:2px solid #94a3b8;
+    }
+    .empty-icon::before { top:14px; }
+    .empty-icon::after { top:23px; }
+    .empty-title { font-weight:800; color:#111827; margin-bottom:6px; }
 
     .table-wrap {
       overflow: auto;
       border: 1px solid var(--line);
-      border-radius: 16px;
+      border-radius: var(--radius);
       background: #fff;
     }
     table {
@@ -182,6 +244,8 @@
       border-collapse: collapse;
       min-width: 1100px;
     }
+    .inventory-table { min-width: 1180px; }
+    .sales-table { min-width: 820px; }
     th, td {
       padding: 13px 11px;
       border-bottom: 1px solid var(--line);
@@ -190,12 +254,33 @@
       font-size: 17px;
     }
     th {
-      background: #f9fafb;
+      background: var(--surface-soft);
       color: #374151;
       position: sticky;
       top: 0;
       z-index: 1;
     }
+    th.num,
+    td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    th.actions-col,
+    td.actions-col {
+      position: sticky;
+      right: 0;
+      background: #fff;
+      z-index: 2;
+      box-shadow: -1px 0 0 var(--line);
+      min-width: 132px;
+    }
+    th.actions-col {
+      background: var(--surface-soft);
+      z-index: 3;
+    }
+    tr:hover td.actions-col { background: #fafcff; }
+    .table-item-name { font-weight:800; line-height:1.35; }
+    .table-item-sub { color:var(--muted); font-size:13px; line-height:1.45; margin-top:4px; }
+    .table-note { max-width:180px; color:var(--muted-strong); line-height:1.45; word-break:break-word; }
+    .table-actions { display:grid; gap:6px; margin-top:0; min-width:112px; }
+    .table-actions button { width:100%; }
     tr:hover td { background: #fafcff; }
     .money.pos { color: var(--success); font-weight: 700; }
     .money.neg { color: var(--danger); font-weight: 700; }
@@ -209,17 +294,23 @@
       color: #1d4ed8;
       font-weight: 700;
     }
-    .tag.warn { background: #fff7ed; color: var(--warn); }
+    .tag.warn { background: var(--warn-soft); color: var(--warn); }
     .tag.gray { background: #f3f4f6; color: #4b5563; }
+    mark.search-hit {
+      background:#fef3c7;
+      color:#92400e;
+      padding:0 2px;
+      border-radius:4px;
+    }
 
     .mobile-list { display: none; gap: 12px; }
     .inventory-list { display: none; gap: 10px; }
     .inventory-item {
-      border: 1px solid #dbeafe;
-      border-radius: 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
       padding: 12px;
-      background: linear-gradient(180deg, #ffffff, #f8fbff);
-      box-shadow: 0 8px 18px rgba(37,99,235,.06);
+      background: var(--surface);
+      box-shadow: var(--shadow-soft);
     }
     .inventory-item > summary {
       display:flex;
@@ -235,15 +326,22 @@
     .inventory-sub { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.4; word-break: break-word; }
     .inventory-side { display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex: 0 0 auto; text-align:right; }
     .inventory-price { font-size: 20px; font-weight: 800; color: #111827; line-height: 1.05; }
-    .inventory-remaining { font-size: 18px; font-weight: 800; line-height: 1; }
+    .inventory-remaining { font-size: 24px; font-weight: 850; line-height: 1; color:var(--primary-dark); }
     .inventory-body {
       margin-top: 10px;
       padding-top: 10px;
-      border-top: 1px solid rgba(219,234,254,.8);
+      border-top: 1px solid var(--line);
     }
+    .inventory-quick-row { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:8px; margin: 10px 0; }
+    .inventory-metric { border:1px solid var(--line); background:var(--surface-soft); border-radius:8px; padding:9px; min-width:0; }
+    .inventory-metric .k { font-size:11px; color:var(--muted); line-height:1.2; margin-bottom:4px; }
+    .inventory-metric .v { font-size:15px; font-weight:800; line-height:1.25; word-break:break-word; }
+    .inventory-primary-action { display:grid; grid-template-columns: minmax(0,1.35fr) minmax(0,.9fr); gap:8px; margin-top:10px; }
+    .inventory-primary-action button { width:100%; min-height:44px; box-shadow:none; }
+    .inventory-primary-action.single { grid-template-columns: 1fr; }
     .icon-inline { font-size: 14px; opacity: .9; }
-    .inventory-banner { display:flex; align-items:center; justify-content:space-between; gap:10px; padding: 9px 10px; border-radius: 12px; background:#eff6ff; border:1px solid #dbeafe; margin-bottom:8px; }
-    .inventory-banner.low { background:#fff7ed; border-color:#fdba74; box-shadow: inset 0 0 0 1px rgba(249,115,22,.08); }
+    .inventory-banner { display:flex; align-items:center; justify-content:space-between; gap:10px; padding: 9px 10px; border-radius: 8px; background:var(--primary-soft); border:1px solid #99f6e4; margin-bottom:8px; }
+    .inventory-banner.low { background:var(--warn-soft); border-color:#fdba74; box-shadow: inset 0 0 0 1px rgba(249,115,22,.08); }
     .inventory-banner .big { font-size: 18px; font-weight: 800; }
     .inventory-grid {
       display: grid;
@@ -253,7 +351,7 @@
     }
     .mini {
       background: #f9fafb;
-      border-radius: 10px;
+      border-radius: 8px;
       padding: 8px 9px;
     }
     .mini .k { font-size: 12px; color: var(--muted); margin-bottom: 3px; }
@@ -265,6 +363,15 @@
       margin-bottom: 8px;
       word-break: break-word;
     }
+    .inventory-note-list {
+      display:grid;
+      gap:4px;
+      margin: 8px 0 10px;
+      color: var(--muted-strong);
+      font-size:13px;
+      line-height:1.5;
+      word-break:break-word;
+    }
     .pagination-bar {
       display: flex;
       justify-content: space-between;
@@ -273,8 +380,8 @@
       margin-top: 12px;
       padding: 12px 14px;
       border: 1px solid var(--line);
-      border-radius: 16px;
-      background: rgba(255,255,255,.82);
+      border-radius: var(--radius);
+      background: var(--surface);
       color: #374151;
     }
     .pagination-info { font-size: 14px; color: var(--muted); line-height: 1.5; }
@@ -285,14 +392,14 @@
       min-width: 38px;
       min-height: 38px;
       padding: 8px 10px;
-      border-radius: 12px;
+      border-radius: var(--control-radius);
       font-size: 14px;
       box-shadow: none;
       background: rgba(17,24,39,.05);
       color: #374151;
     }
     .page-number.active {
-      background: #0a84ff;
+      background: var(--primary);
       color: #fff;
     }
     .page-ellipsis {
@@ -306,7 +413,7 @@
       color: var(--muted);
       padding: 22px;
       border: 1px dashed var(--line);
-      border-radius: 16px;
+      border-radius: var(--radius);
       background: #fff;
     }
     .footer-note {
@@ -318,7 +425,7 @@
     .sync-status {
       margin-top: 12px;
       padding: 12px 14px;
-      border-radius: 14px;
+      border-radius: var(--control-radius);
       border: 1px solid var(--line);
       background: #f9fafb;
       color: #374151;
@@ -334,10 +441,16 @@
     .sticky-search-wrap { position: sticky; top: 0; z-index: 50; padding: 10px 0 8px; background: linear-gradient(180deg, rgba(246,247,251,.98), rgba(246,247,251,.82)); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
     .sticky-search-wrap input { width: 100%; min-height: 52px; border-radius: 18px; box-shadow: 0 10px 24px rgba(15,23,42,.08); }
     .global-sticky-search { position: fixed; top: 0; left: 0; right: 0; z-index: 80; padding: 4px 12px 6px; background: linear-gradient(180deg, rgba(246,247,251,.99), rgba(246,247,251,.88)); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
-    .global-sticky-search input { width: 100%; min-height: 46px; border-radius: 18px; box-shadow: 0 10px 20px rgba(15,23,42,.09); margin: 0 auto; display:block; padding-left: 40px; padding-right: 40px; }
+    .global-sticky-search input { width: 100%; min-height: 46px; border-radius: var(--control-radius); box-shadow: 0 10px 20px rgba(15,23,42,.09); margin: 0 auto; display:block; padding-left: 40px; padding-right: 40px; }
     .search-shell { position: relative; max-width: 1200px; margin: 0 auto; }
-    .search-icon { position:absolute; left:13px; top:50%; transform:translateY(-50%); font-size:15px; opacity:.76; pointer-events:none; z-index:2; line-height:1; }
+    .search-icon { position:absolute; left:14px; top:50%; transform:translateY(-50%); width:16px; height:16px; opacity:.76; pointer-events:none; z-index:2; line-height:1; }
+    .search-icon::before { content:""; position:absolute; width:10px; height:10px; border:2px solid #64748b; border-radius:999px; left:0; top:0; }
+    .search-icon::after { content:""; position:absolute; width:7px; height:2px; background:#64748b; border-radius:999px; transform:rotate(45deg); right:0; bottom:1px; }
     .clear-search-btn { position:absolute; right:9px; top:50%; transform:translateY(-50%); width:28px; height:28px; border-radius:999px; background:#eef2f7; color:#4b5563; font-size:13px; padding:0; display:none; z-index:2; box-shadow:0 2px 6px rgba(15,23,42,.08); }
+    .clear-search-btn::before,
+    .clear-search-btn::after { content:""; position:absolute; width:12px; height:2px; background:#64748b; border-radius:999px; }
+    .clear-search-btn::before { transform:rotate(45deg); }
+    .clear-search-btn::after { transform:rotate(-45deg); }
     .clear-search-btn.show { display:inline-flex; align-items:center; justify-content:center; }
     #listSection { scroll-margin-top: 110px; }
     .sync-status strong {
@@ -415,9 +528,9 @@
       padding-right: 10px;
     }
     .sale-summary {
-      border: 1px solid #dbeafe;
-      background: #f8fbff;
-      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: var(--surface-soft);
+      border-radius: var(--radius);
       padding: 12px 14px;
       font-size: 15px;
       line-height: 1.55;
@@ -431,7 +544,7 @@
       font-weight: 800;
       text-align: center;
       border-color: #bfdbfe;
-      background: #f8fbff;
+      background: var(--surface-soft);
     }
     .sale-actions {
       display: grid;
@@ -469,29 +582,28 @@
       padding: 8px;
       background: rgba(255,255,255,.9);
       border: 1px solid rgba(17,24,39,.06);
-      border-radius: 18px;
+      border-radius: 12px;
       box-shadow: 0 12px 24px rgba(15, 23, 42, .08);
       backdrop-filter: blur(18px);
       -webkit-backdrop-filter: blur(18px);
     }
     .quick-actions button {
       min-height: 46px;
-      border-radius: 14px;
+      border-radius: var(--control-radius);
       font-size: 15px;
       font-weight: 700;
       white-space: nowrap;
     }
-    .quick-primary-btn { box-shadow: 0 10px 22px rgba(10,132,255,.22); }
+    .quick-primary-btn { box-shadow: 0 10px 22px rgba(15,118,110,.22); }
     .quick-secondary-btn { background: rgba(17,24,39,.04); color:#374151; box-shadow:none; }
     .quick-secondary-btn:hover { background: rgba(17,24,39,.07); }
-    .quick-icon-btn { padding: 0; min-width: 46px; font-size: 18px; background: rgba(17,24,39,.03); color:#6b7280; box-shadow:none; }
+    .quick-icon-btn { padding: 0; min-width: 46px; font-size: 0; background: rgba(17,24,39,.03); color:#6b7280; box-shadow:none; position:relative; }
+    .quick-icon-btn::before { content:""; width:10px; height:10px; border-left:2px solid currentColor; border-top:2px solid currentColor; transform:rotate(45deg); margin-top:6px; }
     .quick-icon-btn:hover { background: rgba(17,24,39,.06); color:#374151; }
     .form-card-top {
       margin-top: -4px;
       padding-top: 22px;
-      border-top-left-radius: 26px;
-      border-top-right-radius: 26px;
-      box-shadow: 0 18px 36px rgba(15,23,42,.08);
+      box-shadow: var(--shadow);
     }
     .form-card-title {
       margin-bottom: 10px !important;
@@ -516,9 +628,9 @@
       display: none;
       margin-top: 12px;
       padding: 12px;
-      border-radius: 16px;
-      background: linear-gradient(180deg, #ffffff, #f8fbff);
-      border: 1px solid #dbeafe;
+      border-radius: var(--radius);
+      background: var(--surface);
+      border: 1px solid var(--line);
     }
     .section-title-row { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
     .section-kicker { font-size:13px; color:var(--muted); }
@@ -528,8 +640,8 @@
       gap: 10px;
     }
     .mobile-priority .mini {
-      background: #eff6ff;
-      border: 1px solid #dbeafe;
+      background: var(--primary-soft);
+      border: 1px solid #99f6e4;
     }
     .compact-note {
       font-size: 13px;
@@ -542,10 +654,10 @@
     }
     .sale-mobile-item {
       border: 1px solid var(--line);
-      border-radius: 16px;
+      border-radius: var(--radius);
       padding: 12px;
-      background: rgba(255,255,255,.9);
-      box-shadow: 0 10px 24px rgba(15,23,42,.05);
+      background: var(--surface);
+      box-shadow: var(--shadow-soft);
     }
     .sale-mobile-top {
       display: flex;
@@ -584,28 +696,41 @@
     }
     .sale-mobile-actions { margin-top: 10px; }
     .sale-delete-btn { padding: 8px 10px; font-size: 13px; border-radius: 10px; box-shadow: none; }
-    .sale-delete-btn.danger { color:#fff; background:#dc2626; }
-    .sale-delete-btn.danger:hover { background:#b91c1c; }
-    .sale-delete-btn.ghost { color:#b45309; background:#fff7ed; }
+    .actions-col .sale-delete-btn { width:100%; margin-bottom:6px; }
+    .actions-col .sale-delete-btn:last-child { margin-bottom:0; }
+    .sale-delete-btn.danger { color:#fff; background:var(--danger); }
+    .sale-delete-btn.danger:hover { background:#991b1b; }
+    .sale-delete-btn.ghost { color:var(--warn); background:var(--warn-soft); }
     .sale-delete-btn.ghost:hover { background:#ffedd5; }
     .quick-category-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; margin-bottom:12px; }
-    .category-chip { background:#eef2ff; color:#3730a3; border:1px solid #c7d2fe; border-radius:999px; padding:10px 14px; font-size:14px; font-weight:700; }
-    .category-chip.active { background:#2563eb; color:#fff; border-color:#2563eb; }
-    .month-select { min-width: 150px; min-height: 44px; padding: 10px 36px 10px 12px; border-radius: 12px; font-size: 15px; }
-    .quick-entry-switch { margin-top:10px; padding:10px 12px; border-radius:12px; background:#f8fafc; border:1px solid #e2e8f0; }
+    .category-chip { background:#eef2f1; color:var(--primary-dark); border:1px solid #ccfbf1; border-radius:999px; padding:10px 14px; font-size:14px; font-weight:700; box-shadow:none; }
+    .category-chip.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+    .month-select { min-width: 150px; min-height: 44px; padding: 10px 36px 10px 12px; border-radius: var(--control-radius); font-size: 15px; }
+    .quick-entry-switch { margin-top:10px; padding:10px 12px; border-radius:var(--radius); background:var(--surface-soft); border:1px solid var(--line); }
     .quick-entry-label { display:flex; align-items:center; gap:8px; color:#111827; font-weight:700; font-size:15px; line-height:1.3; }
     .quick-entry-label input { width:auto; min-height:auto; transform:scale(1); }
-    .form-steps { margin-top:12px; border:1px solid var(--line); border-radius:16px; padding:12px; background:#fcfcfd; }
+    .form-steps { margin-top:12px; border:1px solid var(--line); border-radius:var(--radius); padding:12px; background:#fcfcfd; }
     .form-steps summary { cursor:pointer; font-weight:700; color:#111827; }
+    .form-steps summary::marker { color:var(--primary); }
     .entry-toast { position: sticky; top: 10px; z-index: 40; display:none; margin-top:12px; padding:10px 12px; border-radius:999px; background:rgba(15,118,110,.96); color:#fff; font-size:13px; font-weight:700; text-align:center; box-shadow:0 10px 24px rgba(15,118,110,.18); }
-    .field-highlight input { border-color: #2563eb !important; box-shadow: 0 0 0 5px rgba(37,99,235,.14) !important; background:#f8fbff !important; }
+    .field-highlight input { border-color: var(--primary) !important; box-shadow: 0 0 0 5px rgba(15,118,110,.14) !important; background:var(--surface-soft) !important; }
+    .low-stock-alert {
+      border:1px solid #fdba74;
+      background:var(--warn-soft);
+      border-radius:var(--radius);
+      padding:12px 14px;
+      color:#9a3412;
+      font-size:14px;
+      box-shadow:var(--shadow-soft);
+    }
+    .low-stock-alert strong { color:#7c2d12; }
 
     @media (min-width: 901px) {
       body {
         padding: 28px 28px 42px;
         background:
-          radial-gradient(circle at top left, rgba(10,132,255,.10), transparent 34%),
-          linear-gradient(180deg, #f7f8fb 0%, #eef2f7 100%);
+          radial-gradient(circle at top left, rgba(15,118,110,.09), transparent 34%),
+          linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
         font-size: 16px;
       }
 
@@ -624,7 +749,7 @@
 
       .global-sticky-search input {
         min-height: 50px;
-        border-radius: 14px;
+        border-radius: var(--control-radius);
         box-shadow: 0 12px 28px rgba(15,23,42,.08);
       }
 
@@ -634,10 +759,9 @@
         align-items: stretch;
         gap: 18px;
         padding: 24px;
-        border-radius: 22px;
+        border-radius: 12px;
         background:
-          linear-gradient(135deg, rgba(15,23,42,.96), rgba(15,118,110,.90)),
-          linear-gradient(135deg, #1d4ed8, #0f766e);
+          linear-gradient(135deg, rgba(15,23,42,.98), rgba(15,118,110,.88));
       }
 
       .dashboard-headline {
@@ -661,7 +785,7 @@
 
       .workbench-tile {
         min-height: 136px;
-        border-radius: 16px;
+        border-radius: 10px;
       }
 
       .grid.top {
@@ -670,16 +794,16 @@
       }
 
       .card {
-        border-radius: 16px;
+        border-radius: var(--radius);
         padding: 22px;
-        box-shadow: 0 16px 34px rgba(15,23,42,.07);
+        box-shadow: var(--shadow-soft);
       }
 
       .form-card-top {
         position: sticky;
         top: 86px;
         margin-top: 0;
-        border-radius: 18px;
+        border-radius: var(--radius);
       }
 
       #overviewCard .stats,
@@ -705,12 +829,12 @@
       .toolbar select,
       .toolbar input {
         min-height: 44px;
-        border-radius: 12px;
+        border-radius: var(--control-radius);
         font-size: 15px;
       }
 
       .inventory-table-wrap {
-        border-radius: 14px;
+        border-radius: var(--radius);
       }
 
       table {
@@ -743,7 +867,7 @@
       }
 
       .pagination-bar {
-        border-radius: 14px;
+        border-radius: var(--radius);
         padding: 10px 12px;
       }
 
@@ -753,7 +877,7 @@
       }
 
       .modal {
-        border-radius: 22px;
+        border-radius: 12px;
         border-bottom: 1px solid var(--line);
       }
 
@@ -781,16 +905,16 @@
       .hero h1 { font-size: 28px; }
       body { padding: 12px 12px 96px; }
       .card { padding: 14px; }
-      .hero { padding: 16px; border-radius: 22px; }
+      .hero { padding: 16px; border-radius: 12px; }
       .hero p { font-size: 16px; }
       .dashboard-title { font-size: 22px; }
       .card h2 { font-size: 22px; }
-      .stat { padding: 14px; border-radius: 16px; }
+      .stat { padding: 14px; border-radius: var(--radius); }
       .stat .label { font-size: 14px; margin-bottom: 6px; }
       .stat .value { font-size: 24px; }
       .stat .hint { font-size: 12px; }
       .workbench-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
-      .workbench-tile { min-height: 96px; padding:14px; border-radius:16px; }
+      .workbench-tile { min-height: 96px; padding:14px; border-radius:10px; }
       .workbench-tile .k { font-size: 13px; margin-bottom: 12px; }
       .workbench-tile .v { font-size: 26px; }
       .sync-status { font-size: 13px; }
@@ -824,7 +948,7 @@
       input, textarea, select, button { font-size: 16px; }
       input, textarea, select { min-height: 52px; }
       .month-select { width: 100%; }
-      .modal { width: 100vw; max-width: 100vw; padding: 16px 14px max(20px, env(safe-area-inset-bottom)); border-radius: 22px 22px 0 0; }
+      .modal { width: 100vw; max-width: 100vw; padding: 16px 14px max(20px, env(safe-area-inset-bottom)); border-radius: 14px 14px 0 0; }
       .sale-modal {
         max-height: calc(100vh - 10px);
         max-height: calc(100dvh - 10px);
@@ -858,9 +982,9 @@
   <div class="container">
     <div class="global-sticky-search">
       <div class="search-shell">
-        <span class="search-icon">🔍</span>
+        <span class="search-icon" aria-hidden="true"></span>
         <input id="searchInput" placeholder="搜索商品名 / 分类 / SKU / 备注" />
-        <button type="button" id="clearSearchBtn" class="clear-search-btn" aria-label="清空搜索">✕</button>
+        <button type="button" id="clearSearchBtn" class="clear-search-btn" aria-label="清空搜索"></button>
       </div>
     </div>
 
@@ -869,15 +993,16 @@
         <div>
           <div class="dashboard-kicker">Dashboard</div>
           <div class="dashboard-title">库存工作台</div>
+          <div class="dashboard-subtitle">优先处理今日卖出、低库存和可售库存。</div>
         </div>
-        <div class="dashboard-pill">📱</div>
+        <div class="dashboard-pill">LIVE</div>
       </div>
       <div class="workbench-grid" id="workbenchGrid"></div>
     </section>
 
-    <section class="grid top" style="margin-top: -2px;">
+    <section class="grid top section-block tight-top">
       <div class="card section-anchor form-card-top" id="formSection">
-        <h2 id="formTitle" class="form-card-title">✍️ 新增商品</h2>
+        <h2 id="formTitle" class="form-card-title">新增商品</h2>
         <div id="entryReadyBanner" class="entry-toast">已保存，继续录入下一条</div>
         <div class="quick-entry-switch">
           <label class="quick-entry-label">
@@ -895,7 +1020,7 @@
         </div>
         <form id="itemForm">
           <details class="form-steps" open id="primaryFieldsBlock">
-            <summary>第一步：先填核心字段</summary>
+            <summary>核心字段</summary>
             <div class="form-grid">
               <div class="field">
                 <label for="name">商品名称</label>
@@ -906,30 +1031,30 @@
                 <input id="category" placeholder="例如：Jellycat / 泡泡玛特 / 化妆品" />
               </div>
               <div class="field">
-                <label for="sku">编号 / SKU</label>
-                <input id="sku" placeholder="例如：A-001" />
-              </div>
-              <div class="field">
-                <label for="supplier">供货渠道</label>
-                <input id="supplier" placeholder="例如：深圳华强北" />
-              </div>
-              <div class="field">
                 <label for="costPrice">进价（单价）</label>
                 <input id="costPrice" type="number" min="0" step="0.01" placeholder="0" />
-              </div>
-              <div class="field">
-                <label for="marketPrice">预估售价（单价）</label>
-                <input id="marketPrice" type="number" min="0" step="0.01" placeholder="0" />
               </div>
               <div class="field">
                 <label for="quantity">进货数量</label>
                 <input id="quantity" type="number" min="0" step="1" placeholder="0" />
               </div>
+              <div class="field full">
+                <label for="sku">编号 / SKU</label>
+                <input id="sku" placeholder="例如：A-001" />
+              </div>
             </div>
           </details>
           <details class="form-steps" id="extraFieldsBlock">
-            <summary>第二步：补充更多信息（可选）</summary>
-            <div class="form-grid" style="margin-top:12px;">
+            <summary>更多信息（售价、渠道、位置、备注）</summary>
+            <div class="form-grid with-top-gap">
+              <div class="field">
+                <label for="marketPrice">预估售价（单价）</label>
+                <input id="marketPrice" type="number" min="0" step="0.01" placeholder="0" />
+              </div>
+              <div class="field">
+                <label for="supplier">供货渠道</label>
+                <input id="supplier" placeholder="例如：深圳华强北" />
+              </div>
               <div class="field">
                 <label for="location">存放位置</label>
                 <input id="location" placeholder="例如：仓库 A / 家里柜子" />
@@ -952,26 +1077,26 @@
       <div class="card section-anchor" id="overviewCard">
         <div class="section-title-row">
           <div>
-            <h2 style="font-size:22px; margin:0;">📊 总览统计</h2>
+            <h2 class="section-title"><span class="section-marker"></span>总览统计</h2>
             <div class="section-kicker">库存与利润总览。</div>
           </div>
         </div>
         <div class="stats" id="stats"></div>
         <div id="lowStockAnchor" class="section-anchor">
-          <div id="lowStockAlert" style="margin-top:12px;"></div>
+          <div id="lowStockAlert" class="low-stock-slot"></div>
         </div>
       </div>
     </section>
 
-    <section class="card section-anchor" id="listSection" style="margin-top: 16px;">
+    <section class="card section-anchor section-block" id="listSection">
       <div class="section-title-row">
         <div>
-          <h2 style="font-size:22px; margin:0;">📦 库存状态</h2>
+          <h2 class="section-title"><span class="section-marker neutral"></span>库存状态</h2>
           <div class="section-kicker">按状态快速查看商品。</div>
         </div>
       </div>
-      <div id="searchResultMeta" class="compact-note" style="margin-bottom:10px; display:none;"></div>
-      <div class="toolbar" style="margin-top:12px;">
+      <div id="searchResultMeta" class="compact-note search-meta" hidden></div>
+      <div class="toolbar compact">
         <div class="toolbar-left">
           <select id="stockFilter">
             <option value="active" selected>隐藏已售空</option>
@@ -992,30 +1117,30 @@
         </div>
       </div>
 
-      <div class="table-wrap inventory-table-wrap" style="margin-top:12px;">
-        <table>
+      <div class="table-wrap inventory-table-wrap stack-gap-sm">
+        <table class="inventory-table">
           <thead>
             <tr>
               <th>商品</th>
               <th>分类</th>
               <th>SKU</th>
-              <th>进价</th>
-              <th>预估售价</th>
-              <th>成交价</th>
-              <th>进货</th>
-              <th>已售</th>
-              <th>剩余</th>
-              <th>总成本</th>
-              <th>已实现利润</th>
-              <th>利润率</th>
+              <th class="num">进价</th>
+              <th class="num">预估售价</th>
+              <th class="num">成交价</th>
+              <th class="num">进货</th>
+              <th class="num">已售</th>
+              <th class="num">剩余</th>
+              <th class="num">总成本</th>
+              <th class="num">已实现利润</th>
+              <th class="num">利润率</th>
               <th>备注</th>
-              <th>操作</th>
+              <th class="actions-col">操作</th>
             </tr>
           </thead>
           <tbody id="tableBody"></tbody>
         </table>
       </div>
-      <div id="inventoryList" class="inventory-list" style="margin-top:12px;"></div>
+      <div id="inventoryList" class="inventory-list stack-gap-sm"></div>
       <div class="pagination-bar">
         <div id="pageInfo" class="pagination-info">共 0 条</div>
         <div class="pagination-actions">
@@ -1026,18 +1151,18 @@
           <button type="button" class="ghost" id="lastPageBtn">最后一页</button>
         </div>
       </div>
-      <div id="emptyState" class="empty" style="display:none; margin-top: 12px;">
-        <div style="font-size:32px; margin-bottom:8px;">📭</div>
-        <div id="emptyStateTitle" style="font-weight:800; color:#111827; margin-bottom:6px;">还没有商品数据</div>
+      <div id="emptyState" class="empty stack-gap-sm" hidden>
+        <div class="empty-icon" aria-hidden="true"></div>
+        <div id="emptyStateTitle" class="empty-title">还没有商品数据</div>
         <div id="emptyStateText">先在上面录入一条试试。</div>
       </div>
     </section>
 
-    <section class="grid top" style="margin-top: 16px;">
+    <section class="grid top section-block">
       <div class="card section-anchor" id="salesStatsCard">
         <div class="section-title-row">
           <div>
-            <h2 style="font-size:22px; margin:0;">🗓️ 日 / 月销售统计</h2>
+            <h2 class="section-title"><span class="section-marker"></span>日 / 月销售统计</h2>
             <div class="section-kicker">查看今日与指定月份利润。</div>
           </div>
           <select id="profitMonthSelect" class="month-select" aria-label="选择利润月份"></select>
@@ -1045,8 +1170,8 @@
         <div class="stats" id="periodStats"></div>
       </div>
       <div class="card section-anchor" id="salesCard">
-        <h2 id="salesSection">🧾 卖出记录</h2>
-        <div class="toolbar" style="margin-top:8px; margin-bottom:10px;">
+        <h2 id="salesSection" class="section-title"><span class="section-marker neutral"></span>卖出记录</h2>
+        <div class="toolbar sales-filter">
           <div class="toolbar-left">
             <select id="salesCategoryFilter" aria-label="筛选卖出记录分类">
               <option value="">全部分类</option>
@@ -1054,7 +1179,7 @@
           </div>
         </div>
         <div id="saleRecords" class="empty">暂无卖出记录。</div>
-        <div class="pagination-bar" style="margin-top:12px;">
+        <div class="pagination-bar stack-gap-sm">
           <div id="salesPageInfo" class="pagination-info">共 0 条</div>
           <div class="pagination-actions">
             <button type="button" class="ghost" id="firstSalesPageBtn">第一页</button>
@@ -1067,22 +1192,22 @@
       </div>
     </section>
 
-    <section class="card" style="margin-top:16px; margin-bottom: 8px;">
+    <section class="card section-block last">
       <div class="section-title-row">
         <div>
-          <h2 style="font-size:22px; margin:0;">🧰 工具与数据</h2>
+          <h2 class="section-title"><span class="section-marker warn"></span>工具与数据</h2>
           <div class="section-kicker">导出、备份与恢复。</div>
         </div>
       </div>
-      <div id="syncStatus" class="sync-status" style="width:100%; margin-top:0;">
+      <div id="syncStatus" class="sync-status full-width-row">
         当前商品 0 条｜卖出记录 0 条｜最近未备份 JSON
       </div>
-      <div class="toolbar" style="margin-top:12px;">
-        <div class="toolbar-right" style="width:100%; justify-content:flex-start;">
+      <div class="toolbar compact">
+        <div class="toolbar-right full-width-row">
           <button class="secondary" id="exportBtn">导出 CSV</button>
           <button class="ghost" id="backupBtn">备份 JSON</button>
           <button class="ghost" id="restoreBtn">恢复 JSON</button>
-          <input id="restoreFile" type="file" accept="application/json" style="display:none;" />
+          <input id="restoreFile" class="hidden-file" type="file" accept="application/json" />
           <button class="danger" id="clearAllBtn">清空全部数据</button>
         </div>
       </div>
@@ -1094,7 +1219,7 @@
       <button class="primary quick-primary-btn" id="quickAddBtn" type="button">+ 新增商品</button>
       <button class="ghost quick-secondary-btn" id="quickListBtn" type="button">看库存</button>
       <button class="ghost quick-secondary-btn" id="quickSalesBtn" type="button">看卖出</button>
-      <button class="ghost quick-icon-btn" id="quickTopBtn" type="button" aria-label="回到顶部">↑</button>
+      <button class="ghost quick-icon-btn" id="quickTopBtn" type="button" aria-label="回到顶部"></button>
     </div>
   </div>
 

@@ -239,7 +239,7 @@ function highlightKeyword(text, keyword) {
   const q = String(keyword || '').trim();
   if (!q) return safeText;
   const re = new RegExp(`(${escapeRegExp(q)})`, 'ig');
-  return safeText.replace(re, '<mark style="background:#fef3c7;color:#92400e;padding:0 2px;border-radius:4px;">$1</mark>');
+  return safeText.replace(re, '<mark class="search-hit">$1</mark>');
 }
 
 
@@ -512,13 +512,13 @@ function renderSearchMeta() {
   if (!searchResultMeta) return;
   const keyword = normalizeSearchTerm(searchInput.value);
   if (!keyword) {
-    searchResultMeta.style.display = 'none';
+    searchResultMeta.hidden = true;
     searchResultMeta.textContent = '';
     return;
   }
 
-  searchResultMeta.style.display = 'block';
-  searchResultMeta.innerHTML = `🔎 关键词：<strong>${escapeHtml(keyword)}</strong> · 匹配 <strong>${inventoryTotalCount}</strong> 条`;
+  searchResultMeta.hidden = false;
+  searchResultMeta.innerHTML = `关键词：<strong>${escapeHtml(keyword)}</strong> · 匹配 <strong>${inventoryTotalCount}</strong> 条`;
 }
 
 function renderWorkbench() {
@@ -528,14 +528,14 @@ function renderWorkbench() {
   const totalRemaining = toNumber(summary.remaining_units);
   const lowCount = toNumber(summary.low_stock_count);
   const tiles = [
-    ['🛍️', '今日卖出', period.dayQty, '', 'salesCard'],
-    ['💰', '本月利润', money(period.monthProfit), '', 'salesStatsCard'],
-    ['⚠️', '低库存', lowCount, '', 'lowStockAnchor'],
-    ['📦', '剩余库存', totalRemaining, '', 'listSection']
+    { label: '今日卖出', value: period.dayQty, sub: '跳转卖出记录', target: 'salesCard', tone: 'strong' },
+    { label: '本月利润', value: money(period.monthProfit), sub: '查看日 / 月统计', target: 'salesStatsCard', tone: 'strong' },
+    { label: '低库存', value: lowCount, sub: lowCount ? '需要尽快处理' : '暂无风险', target: 'lowStockAnchor', tone: lowCount ? 'alert' : '' },
+    { label: '剩余库存', value: totalRemaining, sub: '查看库存列表', target: 'listSection', tone: '' }
   ];
-  workbenchGrid.innerHTML = tiles.map(([icon, label, value, sub, target]) => `
-    <button class="workbench-tile" type="button" data-target="${target}">
-      <div class="k"><span class="icon-inline">${icon}</span>${label}</div>
+  workbenchGrid.innerHTML = tiles.map(({ label, value, sub, target, tone }) => `
+    <button class="workbench-tile ${tone}" type="button" data-target="${target}">
+      <div class="k"><span class="tile-icon" aria-hidden="true"></span>${label}</div>
       <div class="v">${value}</div>
       ${sub ? `<div class="s">${sub}</div>` : ''}
     </button>
@@ -549,8 +549,8 @@ function renderLowStockAlert() {
     return;
   }
   lowStockAlert.innerHTML = `
-    <div style="border:1px solid #fdba74;background:linear-gradient(180deg,#fff7ed,#fffbeb);border-radius:14px;padding:12px 14px;color:#9a3412;font-size:14px;box-shadow:0 8px 20px rgba(245,158,11,.10);">
-      <strong>⚠️ 低库存提醒：</strong>${inventoryLowStock.map((x) => `${escapeHtml(x.name)}（剩 ${toNumber(x.remaining)}）`).join('、')}
+    <div class="low-stock-alert">
+      <strong>低库存提醒：</strong>${inventoryLowStock.map((x) => `${escapeHtml(x.name)}（剩 ${toNumber(x.remaining)}）`).join('、')}
     </div>`;
 }
 
@@ -708,7 +708,7 @@ function renderInventoryList() {
   const keyword = normalizeSearchTerm(searchInput.value);
   const list = inventoryPageRows;
   if (emptyState) {
-    emptyState.style.display = list.length ? 'none' : 'block';
+    emptyState.hidden = !!list.length;
   }
   if (emptyStateTitle) {
     emptyStateTitle.textContent = inventoryTotalCount ? '当前页没有符合条件的商品' : '还没有商品数据';
@@ -732,6 +732,10 @@ function renderInventoryList() {
     const noteHtml = item.note
       ? `<div class="inventory-note">备注：${highlightKeyword(item.note, keyword)}</div>`
       : '';
+    const detailHtml = [
+      item.supplier ? `<div>供货渠道：${highlightKeyword(item.supplier, keyword)}</div>` : '',
+      item.location ? `<div>存放位置：${highlightKeyword(item.location, keyword)}</div>` : ''
+    ].filter(Boolean).join('');
     return `
       <details class="inventory-item">
         <summary>
@@ -740,12 +744,20 @@ function renderInventoryList() {
             <div class="inventory-sub">${highlightKeyword(item.category || '未分类', keyword)} · ${highlightKeyword(item.sku || '无 SKU', keyword)}</div>
           </div>
           <div class="inventory-side">
-            <div class="inventory-price">${moneyOrPending(c.estimatedPrice)}</div>
-            <div class="inventory-sub">预估售价</div>
             <div class="inventory-remaining">${c.remaining} 件</div>
             <div class="inventory-sub">${c.remaining > 0 ? '可售库存' : '已售空'}</div>
+            <div>${stockTag(c.remaining)}</div>
           </div>
         </summary>
+        <div class="inventory-quick-row">
+          <div class="inventory-metric"><div class="k">进价</div><div class="v">${money(c.costPrice)}</div></div>
+          <div class="inventory-metric"><div class="k">预估售价</div><div class="v">${moneyOrPending(c.estimatedPrice)}</div></div>
+          <div class="inventory-metric"><div class="k">已售 / 进货</div><div class="v">${c.soldQuantity} / ${c.quantity}</div></div>
+        </div>
+        <div class="inventory-primary-action">
+          <button class="primary" onclick="sellItem('${item.id}')">登记卖出</button>
+          <button class="secondary" onclick="editItem('${item.id}')">编辑</button>
+        </div>
         <div class="inventory-body">
           <div class="inventory-banner ${lowClass}">
             <div>
@@ -756,17 +768,15 @@ function renderInventoryList() {
           </div>
           <div class="inventory-grid">
             <div class="mini"><div class="k">SKU</div><div class="v">${escapeHtml(item.sku || '-')}</div></div>
-            <div class="mini"><div class="k">进价</div><div class="v">${money(c.costPrice)}</div></div>
+            <div class="mini"><div class="k">分类</div><div class="v">${highlightKeyword(item.category || '-', keyword)}</div></div>
             <div class="mini"><div class="k">进货数量</div><div class="v">${c.quantity}</div></div>
-            <div class="mini"><div class="k">供货渠道</div><div class="v">${highlightKeyword(item.supplier || '-', keyword)}</div></div>
             <div class="mini"><div class="k">总成本</div><div class="v">${money(c.totalCost)}</div></div>
             <div class="mini"><div class="k">已实现利润</div><div class="v ${c.realizedProfit >= 0 ? 'money pos' : 'money neg'}">${money(c.realizedProfit)}</div></div>
-            <div class="mini"><div class="k">存放位置</div><div class="v">${highlightKeyword(item.location || '-', keyword)}</div></div>
+            <div class="mini"><div class="k">利润率</div><div class="v">${percent(c.profitMargin)}</div></div>
           </div>
+          ${detailHtml ? `<div class="inventory-note-list">${detailHtml}</div>` : ''}
           ${noteHtml}
-          <div class="actions">
-            <button class="primary" onclick="sellItem('${item.id}')">登记卖出</button>
-            <button class="secondary" onclick="editItem('${item.id}')">编辑商品</button>
+          <div class="inventory-primary-action single">
             <button class="danger" onclick="deleteItem('${item.id}')">删除</button>
           </div>
         </div>
@@ -788,23 +798,23 @@ function renderLegacyInventory() {
       return `
         <tr>
           <td>
-            <strong>${escapeHtml(item.name)}</strong><br>
-            <span style="color:#6b7280; font-size:14px;">${escapeHtml(item.supplier || '-')} · ${escapeHtml(item.location || '-')}</span>
+            <div class="table-item-name">${escapeHtml(item.name)}</div>
+            <div class="table-item-sub">${escapeHtml(item.supplier || '-')} · ${escapeHtml(item.location || '-')}</div>
           </td>
           <td>${escapeHtml(item.category || '-')}</td>
           <td>${escapeHtml(item.sku || '-')}</td>
-          <td>${money(c.costPrice)}</td>
-          <td>${moneyOrPending(c.estimatedPrice)}</td>
-          <td>${moneyOrPending(c.estimatedPrice)}</td>
-          <td>${c.quantity}</td>
-          <td>${c.soldQuantity}</td>
-          <td>${c.remaining}<br>${stockTag(c.remaining)}</td>
-          <td>${money(c.totalCost)}</td>
-          <td class="money ${c.realizedProfit >= 0 ? 'pos' : 'neg'}">${money(c.realizedProfit)}</td>
-          <td>${percent(c.profitMargin)}</td>
-          <td>${escapeHtml(item.note || '-')}</td>
-          <td>
-            <div class="actions" style="margin-top:0;">
+          <td class="num">${money(c.costPrice)}</td>
+          <td class="num">${moneyOrPending(c.estimatedPrice)}</td>
+          <td class="num">${moneyOrPending(c.estimatedPrice)}</td>
+          <td class="num">${c.quantity}</td>
+          <td class="num">${c.soldQuantity}</td>
+          <td class="num">${c.remaining}<br>${stockTag(c.remaining)}</td>
+          <td class="num">${money(c.totalCost)}</td>
+          <td class="num money ${c.realizedProfit >= 0 ? 'pos' : 'neg'}">${money(c.realizedProfit)}</td>
+          <td class="num">${percent(c.profitMargin)}</td>
+          <td><div class="table-note">${escapeHtml(item.note || '-')}</div></td>
+          <td class="actions-col">
+            <div class="table-actions">
               <button class="primary" onclick="sellItem('${item.id}')">登记卖出</button>
               <button class="secondary" onclick="editItem('${item.id}')">编辑商品</button>
               <button class="danger" onclick="deleteItem('${item.id}')">删除</button>
@@ -826,7 +836,7 @@ function renderLegacyInventory() {
               <h3>${highlightKeyword(item.name, keyword)}</h3>
               <div class="mobile-item-sub">${highlightKeyword(item.category || '未分类', keyword)} · ${highlightKeyword(item.sku || '无 SKU', keyword)}</div>
             </div>
-            <div style="text-align:right;">
+            <div class="inventory-side">
               <div class="mobile-item-price">${moneyOrPending(c.estimatedPrice)}</div>
               <div class="mobile-item-sub">预估售价</div>
             </div>
@@ -848,7 +858,7 @@ function renderLegacyInventory() {
             <div class="mini"><div class="k">总成本</div><div class="v">${money(c.totalCost)}</div></div>
             <div class="mini"><div class="k">已实现利润</div><div class="v ${c.realizedProfit >= 0 ? 'money pos' : 'money neg'}">${money(c.realizedProfit)}</div></div>
           </div>
-          <div style="font-size:14px; color:#6b7280; line-height:1.6; margin-bottom:10px;">
+          <div class="inventory-note-list">
             供货渠道：${highlightKeyword(item.supplier || '-', keyword)}<br>
             存放位置：${highlightKeyword(item.location || '-', keyword)}<br>
             备注：${highlightKeyword(item.note || '-', keyword)}
@@ -927,21 +937,21 @@ function renderSaleRecords() {
       `).join('')}
     </div>
     <div class="table-wrap">
-      <table style="min-width:820px;">
+      <table class="sales-table">
         <thead>
-          <tr><th>时间</th><th>商品</th><th>分类</th><th>数量</th><th>成交单价</th><th>销售额</th><th>利润</th><th>备注</th><th>操作</th></tr>
+          <tr><th>时间</th><th>商品</th><th>分类</th><th class="num">数量</th><th class="num">成交单价</th><th class="num">销售额</th><th class="num">利润</th><th>备注</th><th class="actions-col">操作</th></tr>
         </thead>
         <tbody>
           ${rows.map(r=>`<tr>
             <td>${escapeHtml(new Date(r.sold_at).toLocaleString('zh-CN'))}</td>
             <td>${escapeHtml(r.item_name || '-')}</td>
             <td>${escapeHtml(getSaleCategory(r) || '-')}</td>
-            <td>${r.quantity}</td>
-            <td>${money(r.sale_price)}</td>
-            <td>${money(r.revenue)}</td>
-            <td class="money ${toNumber(r.profit)>=0?'pos':'neg'}">${money(r.profit)}</td>
-            <td>${escapeHtml(r.note || '-')}</td>
-            <td>
+            <td class="num">${r.quantity}</td>
+            <td class="num">${money(r.sale_price)}</td>
+            <td class="num">${money(r.revenue)}</td>
+            <td class="num money ${toNumber(r.profit)>=0?'pos':'neg'}">${money(r.profit)}</td>
+            <td><div class="table-note">${escapeHtml(r.note || '-')}</div></td>
+            <td class="actions-col">
               <button type="button" class="ghost sale-delete-btn" onclick="editSaleRecordTime('${r.id}')">编辑时间</button>
               <button type="button" class="danger sale-delete-btn" onclick="deleteSaleRecord('${r.id}')">删除并恢复库存</button>
             </td>
