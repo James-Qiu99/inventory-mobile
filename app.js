@@ -1298,6 +1298,32 @@ function formatBackupFileName(date = new Date()) {
   return `库存备份-${y}${m}${d}-${hh}${mm}${ss}.json`;
 }
 
+async function syncEditedItemSaleRecords(previousItem, updatedItem) {
+  if (!previousItem || !updatedItem) return null;
+  const nameChanged = String(previousItem.name || '') !== String(updatedItem.name || '');
+  const costChanged = toNumber(previousItem.cost_price) !== toNumber(updatedItem.cost_price);
+  if (!nameChanged && !costChanged) return null;
+
+  const relatedSales = saleLogs.filter((sale) => sale.item_id === updatedItem.id);
+  if (!relatedSales.length) return null;
+
+  const rows = relatedSales.map((sale) => {
+    const quantity = Math.max(0, Math.floor(toNumber(sale.quantity)));
+    const salePrice = toNumber(sale.sale_price);
+    const costPrice = toNumber(updatedItem.cost_price);
+    return {
+      ...sale,
+      item_name: updatedItem.name,
+      cost_price: costPrice,
+      revenue: salePrice * quantity,
+      profit: (salePrice - costPrice) * quantity
+    };
+  });
+
+  const { error } = await supabaseClient.from('sales').upsert(rows);
+  return error || null;
+}
+
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const existingEditingItem = editingId ? items.find((item) => item.id === editingId) : null;
@@ -1334,6 +1360,14 @@ form.addEventListener('submit', async (e) => {
       await refreshInventory();
       resetForm();
       return;
+    }
+    if (!error) {
+      const salesSyncError = await syncEditedItemSaleRecords(existingEditingItem, data);
+      if (salesSyncError) {
+        alert('商品已更新，但同步已有卖出记录失败：' + salesSyncError.message);
+        await refreshInventory();
+        return;
+      }
     }
   } else {
     const mergeCandidate = await findMergeCandidate(data);
