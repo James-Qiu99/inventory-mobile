@@ -1054,7 +1054,7 @@ function applyQuickEntryMode() {
 
   if (quickEntryMode.checked) {
     extraFieldsBlock.removeAttribute('open');
-    if (saveAndNextBtn) saveAndNextBtn.style.display = '';
+    if (saveAndNextBtn) saveAndNextBtn.style.display = editingId ? 'none' : '';
     if (submitBtn) submitBtn.textContent = editingId ? '更新商品' : '保存商品';
   } else {
     extraFieldsBlock.setAttribute('open', 'open');
@@ -1071,6 +1071,7 @@ function resetForm() {
   editingId = null;
   formTitle.textContent = '新增商品';
   submitBtn.textContent = '保存商品';
+  if (resetBtn) resetBtn.textContent = '清空表单';
 
   if (keepFormValuesForNext) {
     document.getElementById('category').value = previousCategory || '';
@@ -1186,6 +1187,7 @@ function fillForm(item) {
   editingId = item.id;
   formTitle.textContent = '编辑商品';
   submitBtn.textContent = '更新商品';
+  if (resetBtn) resetBtn.textContent = '取消编辑';
   document.getElementById('name').value = item.name || '';
   document.getElementById('category').value = item.category || '';
   setActiveCategoryChip(item.category || '');
@@ -1198,6 +1200,7 @@ function fillForm(item) {
   document.getElementById('note').value = item.note || '';
 
   if (primaryFieldsBlock) primaryFieldsBlock.setAttribute('open', 'open');
+  applyQuickEntryMode();
   scrollToSection('formSection');
   setTimeout(() => {
     const nameInput = document.getElementById('name');

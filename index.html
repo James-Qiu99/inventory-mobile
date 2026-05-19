@@ -354,11 +354,12 @@
       z-index: 120;
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
+      overflow-x: hidden;
     }
     .modal-backdrop.show { display: flex; }
     .modal {
       width: 100%;
-      max-width: 560px;
+      max-width: min(560px, 100vw);
       background: rgba(255,255,255,.96);
       border-radius: 24px 24px 0 0;
       box-shadow: var(--shadow);
@@ -374,6 +375,7 @@
       flex-direction: column;
       max-height: min(92vh, 720px);
       overflow: hidden;
+      min-width: 0;
     }
     .sale-modal h3 { flex: 0 0 auto; }
     .sale-modal p { flex: 0 0 auto; }
@@ -383,17 +385,26 @@
       flex: 1 1 auto;
       flex-direction: column;
       min-height: 0;
+      min-width: 0;
       overflow: hidden;
     }
     .sale-form-body {
       flex: 1 1 auto;
       min-height: 0;
-      overflow: auto;
+      min-width: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
       padding: 2px 2px 14px;
       overscroll-behavior: contain;
       -webkit-overflow-scrolling: touch;
     }
     .sale-form-body .form-grid { gap: 14px; }
+    .sale-form-body .field,
+    .sale-form-body input,
+    .sale-form-body textarea {
+      min-width: 0;
+      max-width: 100%;
+    }
     .sale-summary {
       border: 1px solid #dbeafe;
       background: #f8fbff;
@@ -616,7 +627,7 @@
       input, textarea, select, button { font-size: 16px; }
       input, textarea, select { min-height: 52px; }
       .month-select { width: 100%; }
-      .modal { padding: 16px 16px max(20px, env(safe-area-inset-bottom)); border-radius: 22px 22px 0 0; }
+      .modal { width: 100vw; max-width: 100vw; padding: 16px 14px max(20px, env(safe-area-inset-bottom)); border-radius: 22px 22px 0 0; }
       .sale-modal {
         max-height: calc(100vh - 10px);
         max-height: calc(100dvh - 10px);
@@ -923,6 +934,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./supabase-config.js?v=20260509j"></script>
-  <script src="./app.js?v=20260519b"></script>
+  <script src="./app.js?v=20260519c"></script>
 </body>
 </html>
