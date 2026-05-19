@@ -932,8 +932,64 @@
     </div>
   </div>
 
+  <div id="editModal" class="modal-backdrop">
+    <div class="modal sale-modal edit-modal">
+      <h3>编辑库存商品</h3>
+      <div id="editModalDesc" class="sale-summary">
+        <strong>调整当前商品</strong>
+        保存后只更新这条库存记录，不影响历史卖出记录。
+      </div>
+      <form id="editForm">
+        <div class="sale-form-body">
+          <div class="form-grid">
+            <div class="field">
+              <label for="editName">商品名称</label>
+              <input id="editName" required />
+            </div>
+            <div class="field">
+              <label for="editCategory">分类</label>
+              <input id="editCategory" />
+            </div>
+            <div class="field">
+              <label for="editSku">编号 / SKU</label>
+              <input id="editSku" />
+            </div>
+            <div class="field">
+              <label for="editSupplier">供货渠道</label>
+              <input id="editSupplier" />
+            </div>
+            <div class="field">
+              <label for="editCostPrice">进价（单价）</label>
+              <input id="editCostPrice" type="number" inputmode="decimal" min="0" step="0.01" />
+            </div>
+            <div class="field">
+              <label for="editMarketPrice">预估售价（单价）</label>
+              <input id="editMarketPrice" type="number" inputmode="decimal" min="0" step="0.01" />
+            </div>
+            <div class="field">
+              <label for="editQuantity">进货数量</label>
+              <input id="editQuantity" type="number" inputmode="numeric" min="0" step="1" />
+            </div>
+            <div class="field">
+              <label for="editLocation">存放位置</label>
+              <input id="editLocation" />
+            </div>
+            <div class="field full">
+              <label for="editNote">备注</label>
+              <textarea id="editNote"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="actions sale-actions">
+          <button type="submit" class="primary" id="editSubmitBtn">更新这条库存</button>
+          <button type="button" class="ghost" id="editCancelBtn">取消</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./supabase-config.js?v=20260509j"></script>
-  <script src="./app.js?v=20260519c"></script>
+  <script src="./app.js?v=20260519d"></script>
 </body>
 </html>

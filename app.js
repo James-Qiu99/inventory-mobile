@@ -37,6 +37,20 @@ const saleQuantityInput = document.getElementById('saleQuantity');
 const salePriceInput = document.getElementById('salePrice');
 const saleTimeInput = document.getElementById('saleTime');
 const saleNoteInput = document.getElementById('saleNote');
+const editModal = document.getElementById('editModal');
+const editForm = document.getElementById('editForm');
+const editModalDesc = document.getElementById('editModalDesc');
+const editCancelBtn = document.getElementById('editCancelBtn');
+const editSubmitBtn = document.getElementById('editSubmitBtn');
+const editNameInput = document.getElementById('editName');
+const editCategoryInput = document.getElementById('editCategory');
+const editSkuInput = document.getElementById('editSku');
+const editSupplierInput = document.getElementById('editSupplier');
+const editCostPriceInput = document.getElementById('editCostPrice');
+const editMarketPriceInput = document.getElementById('editMarketPrice');
+const editQuantityInput = document.getElementById('editQuantity');
+const editLocationInput = document.getElementById('editLocation');
+const editNoteInput = document.getElementById('editNote');
 const lowStockAlert = document.getElementById('lowStockAlert');
 const periodStats = document.getElementById('periodStats');
 const saleRecords = document.getElementById('saleRecords');
@@ -141,6 +155,7 @@ let inventoryMode = 'server';
 let salesPage = 1;
 let selectedProfitMonth = getMonthKey(new Date());
 let saleSubmitting = false;
+let editSubmitting = false;
 
 function toNumber(value) {
   const n = Number(value);
@@ -1054,12 +1069,12 @@ function applyQuickEntryMode() {
 
   if (quickEntryMode.checked) {
     extraFieldsBlock.removeAttribute('open');
-    if (saveAndNextBtn) saveAndNextBtn.style.display = editingId ? 'none' : '';
-    if (submitBtn) submitBtn.textContent = editingId ? '更新商品' : '保存商品';
+    if (saveAndNextBtn) saveAndNextBtn.style.display = '';
+    if (submitBtn) submitBtn.textContent = '保存商品';
   } else {
     extraFieldsBlock.setAttribute('open', 'open');
     if (saveAndNextBtn) saveAndNextBtn.style.display = 'none';
-    if (submitBtn) submitBtn.textContent = editingId ? '更新商品' : '保存全部信息';
+    if (submitBtn) submitBtn.textContent = '保存全部信息';
   }
 }
 
@@ -1102,22 +1117,39 @@ function resetForm() {
   applyQuickEntryMode();
 }
 
-function getFormData(existingEditingItem = null) {
-  const existingItem = existingEditingItem || (editingId ? items.find((item) => item.id === editingId) : null);
+function getFormData() {
   const marketPrice = toNumber(document.getElementById('marketPrice').value);
   return {
-    id: editingId || crypto.randomUUID(),
+    id: crypto.randomUUID(),
     name: document.getElementById('name').value.trim(),
     category: document.getElementById('category').value.trim(),
     sku: document.getElementById('sku').value.trim(),
     supplier: document.getElementById('supplier').value.trim(),
     cost_price: toNumber(document.getElementById('costPrice').value),
     market_price: marketPrice,
-    sell_price: toNumber(existingItem?.sell_price),
+    sell_price: 0,
     quantity: Math.max(0, Math.floor(toNumber(document.getElementById('quantity').value))),
-    sold_quantity: Math.max(0, Math.floor(toNumber(existingItem?.sold_quantity))),
+    sold_quantity: 0,
     location: document.getElementById('location').value.trim(),
     note: document.getElementById('note').value.trim(),
+    updated_at: new Date().toISOString()
+  };
+}
+
+function getEditFormData(existingItem) {
+  return {
+    id: existingItem.id,
+    name: editNameInput.value.trim(),
+    category: editCategoryInput.value.trim(),
+    sku: editSkuInput.value.trim(),
+    supplier: editSupplierInput.value.trim(),
+    cost_price: toNumber(editCostPriceInput.value),
+    market_price: toNumber(editMarketPriceInput.value),
+    sell_price: toNumber(existingItem.sell_price),
+    quantity: Math.max(0, Math.floor(toNumber(editQuantityInput.value))),
+    sold_quantity: Math.max(0, Math.floor(toNumber(existingItem.sold_quantity))),
+    location: editLocationInput.value.trim(),
+    note: editNoteInput.value.trim(),
     updated_at: new Date().toISOString()
   };
 }
@@ -1183,30 +1215,52 @@ function formatDifferentCostBatchList(rows) {
   }).join('\n');
 }
 
-function fillForm(item) {
-  editingId = item.id;
-  formTitle.textContent = '编辑商品';
-  submitBtn.textContent = '更新商品';
-  if (resetBtn) resetBtn.textContent = '取消编辑';
-  document.getElementById('name').value = item.name || '';
-  document.getElementById('category').value = item.category || '';
-  setActiveCategoryChip(item.category || '');
-  document.getElementById('sku').value = item.sku || '';
-  document.getElementById('supplier').value = item.supplier || '';
-  document.getElementById('costPrice').value = item.cost_price ?? '';
-  document.getElementById('marketPrice').value = item.market_price ?? '';
-  document.getElementById('quantity').value = item.quantity ?? '';
-  document.getElementById('location').value = item.location || '';
-  document.getElementById('note').value = item.note || '';
+function setEditSubmitting(active) {
+  editSubmitting = !!active;
+  if (editSubmitBtn) {
+    editSubmitBtn.disabled = editSubmitting;
+    editSubmitBtn.textContent = editSubmitting ? '正在更新...' : '更新这条库存';
+  }
+}
 
-  if (primaryFieldsBlock) primaryFieldsBlock.setAttribute('open', 'open');
-  applyQuickEntryMode();
-  scrollToSection('formSection');
-  setTimeout(() => {
-    const nameInput = document.getElementById('name');
-    nameInput?.focus();
-    nameInput?.select?.();
-  }, 180);
+function openEditModal(id) {
+  const item = items.find((row) => row.id === id);
+  if (!item) return;
+  const c = calc(item);
+  editingId = id;
+  setEditSubmitting(false);
+  editModalDesc.innerHTML = `
+    <strong>${escapeHtml(item.name || '未命名商品')}</strong>
+    当前已售：${c.soldQuantity} 件，剩余：${c.remaining} 件<br>
+    保存后只更新这条库存记录，不修改历史卖出利润。
+  `;
+  editNameInput.value = item.name || '';
+  editCategoryInput.value = item.category || '';
+  editSkuInput.value = item.sku || '';
+  editSupplierInput.value = item.supplier || '';
+  editCostPriceInput.value = item.cost_price ?? '';
+  editMarketPriceInput.value = item.market_price ?? '';
+  editQuantityInput.value = item.quantity ?? '';
+  editQuantityInput.min = String(c.soldQuantity);
+  editLocationInput.value = item.location || '';
+  editNoteInput.value = item.note || '';
+  editModal.classList.add('show');
+  lockPageScroll();
+  if (shouldAutoFocusSaleInput()) {
+    setTimeout(() => {
+      editNameInput.focus();
+      editNameInput.select?.();
+    }, 80);
+  }
+}
+
+function closeEditModal() {
+  editingId = null;
+  setEditSubmitting(false);
+  editQuantityInput.removeAttribute('min');
+  editForm.reset();
+  editModal.classList.remove('show');
+  unlockPageScroll();
 }
 
 async function removeItem(id) {
@@ -1303,77 +1357,48 @@ function formatBackupFileName(date = new Date()) {
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const existingEditingItem = editingId ? items.find((item) => item.id === editingId) : null;
-  if (editingId && !existingEditingItem) {
-    alert('当前编辑的商品没有在最新库存里找到，请刷新后重新编辑。');
-    await refreshInventory();
-    resetForm();
-    return;
-  }
-
-  const data = getFormData(existingEditingItem);
+  const data = getFormData();
   if (!data.name) {
     alert('请填写商品名称。');
-    return;
-  }
-  if (data.quantity < data.sold_quantity) {
-    alert(`进货数量不能小于已售数量（当前已售 ${data.sold_quantity}）。如果要修正已售，请先处理卖出记录。`);
     return;
   }
 
   let error = null;
 
-  if (editingId) {
-    const { id, ...updateData } = data;
-    const { data: updatedItem, error: updateError } = await supabaseClient
-      .from('items')
-      .update(updateData)
-      .eq('id', id)
-      .select('id')
-      .maybeSingle();
-    error = updateError;
-    if (!error && !updatedItem) {
-      alert('更新失败：没有找到要编辑的商品，请刷新后重新编辑。');
-      await refreshInventory();
-      resetForm();
-      return;
-    }
-  } else {
-    const mergeCandidate = await findMergeCandidate(data);
-    if (mergeCandidate) {
-      const shouldMerge = confirm(`已存在同名且进价相同的商品「${mergeCandidate.name}」。\n要把这次录入的数量合并到原商品里吗？`);
-      if (shouldMerge) {
-        const mergedData = buildMergedItemPayload(mergeCandidate, data);
-        ({ error } = await supabaseClient.from('items').update(mergedData).eq('id', mergeCandidate.id));
-      } else {
-        ({ error } = await supabaseClient.from('items').insert(data));
-      }
+  const mergeCandidate = await findMergeCandidate(data);
+  if (mergeCandidate) {
+    const shouldMerge = confirm(`已存在同名且进价相同的商品「${mergeCandidate.name}」。\n要把这次录入的数量合并到原商品里吗？`);
+    if (shouldMerge) {
+      const mergedData = buildMergedItemPayload(mergeCandidate, data);
+      ({ error } = await supabaseClient.from('items').update(mergedData).eq('id', mergeCandidate.id));
     } else {
-      const differentCostItems = await findSameNameDifferentCostItems(data);
-      if (differentCostItems.length) {
-        const shouldCreateSeparateBatch = confirm([
-          `已存在同名商品「${data.name}」，但进价和这次不同。`,
-          '',
-          '已有批次：',
-          formatDifferentCostBatchList(differentCostItems),
-          '',
-          `这次进价：${money(data.cost_price)}`,
-          '',
-          '建议作为独立批次保存，这样利润会按各自进价计算。',
-          '确定继续新增独立批次吗？'
-        ].join('\n'));
-        if (!shouldCreateSeparateBatch) return;
-      }
       ({ error } = await supabaseClient.from('items').insert(data));
     }
+  } else {
+    const differentCostItems = await findSameNameDifferentCostItems(data);
+    if (differentCostItems.length) {
+      const shouldCreateSeparateBatch = confirm([
+        `已存在同名商品「${data.name}」，但进价和这次不同。`,
+        '',
+        '已有批次：',
+        formatDifferentCostBatchList(differentCostItems),
+        '',
+        `这次进价：${money(data.cost_price)}`,
+        '',
+        '建议作为独立批次保存，这样利润会按各自进价计算。',
+        '确定继续新增独立批次吗？'
+      ].join('\n'));
+      if (!shouldCreateSeparateBatch) return;
+    }
+    ({ error } = await supabaseClient.from('items').insert(data));
   }
 
   if (error) {
-    alert((editingId ? '更新' : '保存') + '失败：' + error.message);
+    alert('保存失败：' + error.message);
     return;
   }
   await applyQuickEntryMode();
-  await refreshInventory({ resetPage: !editingId });
+  await refreshInventory({ resetPage: true });
   resetForm();
 });
 
@@ -1535,6 +1560,58 @@ restoreFile.addEventListener('change', async (e) => {
   }
 });
 
+editCancelBtn.addEventListener('click', closeEditModal);
+editModal.addEventListener('click', (e) => {
+  if (e.target === editModal) closeEditModal();
+});
+editForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (editSubmitting) return;
+  const existingItem = editingId ? items.find((item) => item.id === editingId) : null;
+  if (!existingItem) {
+    alert('当前编辑的商品没有在最新库存里找到，请刷新后重新编辑。');
+    await refreshInventory();
+    closeEditModal();
+    return;
+  }
+
+  const data = getEditFormData(existingItem);
+  if (!data.name) {
+    alert('请填写商品名称。');
+    return;
+  }
+  if (data.quantity < data.sold_quantity) {
+    alert(`进货数量不能小于已售数量（当前已售 ${data.sold_quantity}）。如果要修正已售，请先处理卖出记录。`);
+    return;
+  }
+
+  setEditSubmitting(true);
+  try {
+    const { id, ...updateData } = data;
+    const { data: updatedItem, error } = await supabaseClient
+      .from('items')
+      .update(updateData)
+      .eq('id', id)
+      .select('id')
+      .maybeSingle();
+    if (error) {
+      alert('更新失败：' + error.message);
+      return;
+    }
+    if (!updatedItem) {
+      alert('更新失败：没有找到要编辑的商品，请刷新后重新编辑。');
+      await refreshInventory();
+      closeEditModal();
+      return;
+    }
+
+    await refreshInventory();
+    closeEditModal();
+  } finally {
+    setEditSubmitting(false);
+  }
+});
+
 saleCancelBtn.addEventListener('click', closeSaleModal);
 saleModal.addEventListener('click', (e) => {
   if (e.target === saleModal) {
@@ -1625,8 +1702,7 @@ clearAllBtn.addEventListener('click', async () => {
 });
 
 window.editItem = function(id) {
-  const item = items.find(i => i.id === id);
-  if (item) fillForm(item);
+  openEditModal(id);
 }
 
 window.deleteItem = function(id) {
