@@ -51,6 +51,12 @@ const editMarketPriceInput = document.getElementById('editMarketPrice');
 const editQuantityInput = document.getElementById('editQuantity');
 const editLocationInput = document.getElementById('editLocation');
 const editNoteInput = document.getElementById('editNote');
+const saleTimeEditModal = document.getElementById('saleTimeEditModal');
+const saleTimeEditForm = document.getElementById('saleTimeEditForm');
+const saleTimeEditDesc = document.getElementById('saleTimeEditDesc');
+const saleTimeEditInput = document.getElementById('saleTimeEditInput');
+const saleTimeEditCancelBtn = document.getElementById('saleTimeEditCancelBtn');
+const saleTimeEditSubmitBtn = document.getElementById('saleTimeEditSubmitBtn');
 const lowStockAlert = document.getElementById('lowStockAlert');
 const periodStats = document.getElementById('periodStats');
 const saleRecords = document.getElementById('saleRecords');
@@ -110,7 +116,7 @@ function isEditableTarget(el) {
 }
 
 function shouldAutoFocusSaleInput() {
-  return !window.matchMedia('(max-width: 900px), (pointer: coarse)').matches;
+  return !window.matchMedia('(max-width: 900px)').matches;
 }
 
 let lockedScrollY = 0;
@@ -156,6 +162,8 @@ let salesPage = 1;
 let selectedProfitMonth = getMonthKey(new Date());
 let saleSubmitting = false;
 let editSubmitting = false;
+let editingSaleTimeId = null;
+let saleTimeEditSubmitting = false;
 
 function toNumber(value) {
   const n = Number(value);
@@ -972,26 +980,39 @@ async function removeSaleRecord(id) {
 }
 
 async function updateSaleRecordTime(id) {
-  const sale = saleLogs.find((row) => row.id === id);
-  if (!sale) return;
-  const currentValue = toDatetimeLocalValue(sale.sold_at);
-  const nextValue = prompt('修改卖出时间（格式：YYYY-MM-DDTHH:mm）', currentValue);
-  if (nextValue === null) return;
-  const nextDate = new Date(nextValue);
-  if (Number.isNaN(nextDate.getTime())) {
-    alert('时间格式无效，请重新输入。');
-    return;
-  }
+  openSaleTimeEditModal(id);
+}
 
-  const { error } = await supabaseClient
-    .from('sales')
-    .update({ sold_at: nextDate.toISOString() })
-    .eq('id', id);
-  if (error) {
-    alert('更新时间失败：' + error.message);
-    return;
+function setSaleTimeEditSubmitting(active) {
+  saleTimeEditSubmitting = !!active;
+  if (saleTimeEditSubmitBtn) {
+    saleTimeEditSubmitBtn.disabled = saleTimeEditSubmitting;
+    saleTimeEditSubmitBtn.textContent = saleTimeEditSubmitting ? '正在保存...' : '保存时间';
   }
-  await refreshInventory();
+}
+
+function openSaleTimeEditModal(id) {
+  const sale = saleLogs.find((row) => row.id === id);
+  if (!sale || !saleTimeEditModal || !saleTimeEditInput) return;
+  editingSaleTimeId = id;
+  setSaleTimeEditSubmitting(false);
+  if (saleTimeEditDesc) {
+    saleTimeEditDesc.innerHTML = `
+      <strong>${escapeHtml(sale.item_name || '未命名商品')}</strong>
+      当前时间：${escapeHtml(new Date(sale.sold_at).toLocaleString('zh-CN'))}
+    `;
+  }
+  saleTimeEditInput.value = toDatetimeLocalValue(sale.sold_at);
+  saleTimeEditModal.classList.add('show');
+  lockPageScroll();
+}
+
+function closeSaleTimeEditModal() {
+  editingSaleTimeId = null;
+  setSaleTimeEditSubmitting(false);
+  saleTimeEditForm?.reset();
+  saleTimeEditModal?.classList.remove('show');
+  unlockPageScroll();
 }
 
 function openSaleModal(id) {
@@ -1614,9 +1635,7 @@ editForm.addEventListener('submit', async (e) => {
 
 saleCancelBtn.addEventListener('click', closeSaleModal);
 saleModal.addEventListener('click', (e) => {
-  if (e.target === saleModal) {
-    if (shouldAutoFocusSaleInput()) saleQuantityInput?.focus();
-  }
+  if (e.target === saleModal) closeSaleModal();
 });
 saleForm.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -1687,6 +1706,41 @@ saleForm.addEventListener('submit', async (e) => {
     closeSaleModal();
   } finally {
     setSaleSubmitting(false);
+  }
+});
+
+if (saleTimeEditCancelBtn) saleTimeEditCancelBtn.addEventListener('click', closeSaleTimeEditModal);
+if (saleTimeEditModal) saleTimeEditModal.addEventListener('click', (e) => {
+  if (e.target === saleTimeEditModal) closeSaleTimeEditModal();
+});
+if (saleTimeEditForm) saleTimeEditForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (saleTimeEditSubmitting) return;
+  const sale = editingSaleTimeId ? saleLogs.find((row) => row.id === editingSaleTimeId) : null;
+  if (!sale) {
+    closeSaleTimeEditModal();
+    return;
+  }
+  const nextDate = new Date(saleTimeEditInput?.value || '');
+  if (Number.isNaN(nextDate.getTime())) {
+    alert('请选择有效的卖出时间。');
+    return;
+  }
+
+  setSaleTimeEditSubmitting(true);
+  try {
+    const { error } = await supabaseClient
+      .from('sales')
+      .update({ sold_at: nextDate.toISOString() })
+      .eq('id', sale.id);
+    if (error) {
+      alert('更新时间失败：' + error.message);
+      return;
+    }
+    await refreshInventory();
+    closeSaleTimeEditModal();
+  } finally {
+    setSaleTimeEditSubmitting(false);
   }
 });
 
