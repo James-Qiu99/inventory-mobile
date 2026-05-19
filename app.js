@@ -766,7 +766,7 @@ function renderInventoryList() {
           ${noteHtml}
           <div class="actions">
             <button class="primary" onclick="sellItem('${item.id}')">登记卖出</button>
-            <button class="secondary" onclick="editItem('${item.id}')">编辑</button>
+            <button class="secondary" onclick="editItem('${item.id}')">编辑商品</button>
             <button class="danger" onclick="deleteItem('${item.id}')">删除</button>
           </div>
         </div>
@@ -806,7 +806,7 @@ function renderLegacyInventory() {
           <td>
             <div class="actions" style="margin-top:0;">
               <button class="primary" onclick="sellItem('${item.id}')">登记卖出</button>
-              <button class="secondary" onclick="editItem('${item.id}')">编辑</button>
+              <button class="secondary" onclick="editItem('${item.id}')">编辑商品</button>
               <button class="danger" onclick="deleteItem('${item.id}')">删除</button>
             </div>
           </td>
@@ -855,7 +855,7 @@ function renderLegacyInventory() {
           </div>
           <div class="actions">
             <button class="primary" onclick="sellItem('${item.id}')">登记卖出</button>
-            <button class="secondary" onclick="editItem('${item.id}')">编辑</button>
+            <button class="secondary" onclick="editItem('${item.id}')">编辑商品</button>
             <button class="danger" onclick="deleteItem('${item.id}')">删除</button>
           </div>
         </div>
@@ -921,7 +921,7 @@ function renderSaleRecords() {
           </div>
           <div class="sale-mobile-actions">
             <button type="button" class="ghost sale-delete-btn" onclick="editSaleRecordTime('${r.id}')">编辑时间</button>
-            <button type="button" class="ghost sale-delete-btn" onclick="deleteSaleRecord('${r.id}')">删除并恢复库存</button>
+            <button type="button" class="danger sale-delete-btn" onclick="deleteSaleRecord('${r.id}')">删除并恢复库存</button>
           </div>
         </div>
       `).join('')}
@@ -943,7 +943,7 @@ function renderSaleRecords() {
             <td>${escapeHtml(r.note || '-')}</td>
             <td>
               <button type="button" class="ghost sale-delete-btn" onclick="editSaleRecordTime('${r.id}')">编辑时间</button>
-              <button type="button" class="ghost sale-delete-btn" onclick="deleteSaleRecord('${r.id}')">删除并恢复库存</button>
+              <button type="button" class="danger sale-delete-btn" onclick="deleteSaleRecord('${r.id}')">删除并恢复库存</button>
             </td>
           </tr>`).join('')}
         </tbody>
@@ -956,7 +956,7 @@ async function removeSaleRecord(id) {
   const sale = saleLogs.find((row) => row.id === id);
   if (!sale) return;
   const item = items.find((row) => row.id === sale.item_id);
-  if (!confirm(`确定删除卖出记录「${sale.item_name || '未命名商品'}」吗？\n删除后会恢复 ${toNumber(sale.quantity)} 件库存。`)) return;
+  if (!confirm(`二次确认：确定删除卖出记录「${sale.item_name || '未命名商品'}」吗？\n删除后会恢复 ${toNumber(sale.quantity)} 件库存。`)) return;
 
   if (item) {
     const nextSoldQuantity = Math.max(0, Math.floor(toNumber(item.sold_quantity) - toNumber(sale.quantity)));
@@ -1287,7 +1287,7 @@ function closeEditModal() {
 async function removeItem(id) {
   const item = items.find(i => i.id === id);
   if (!item) return;
-  if (!confirm(`确定删除商品「${item.name}」吗？`)) return;
+  if (!confirm(`二次确认：确定删除商品「${item.name}」吗？\n这个商品关联的卖出记录也会一起删除。`)) return;
 
   const { error: salesError } = await supabaseClient.from('sales').delete().eq('item_id', id);
   if (salesError) {
@@ -1544,7 +1544,7 @@ restoreFile.addEventListener('change', async (e) => {
       `- 卖出记录：${importedSales.length} 条`,
       `- 备份时间：${exportedAtText}`,
       '',
-      '注意：这会先清空 Supabase 里的当前数据，再导入备份。',
+      '二次确认：这会先清空 Supabase 里的当前数据，再导入备份。',
       '确定继续恢复吗？'
     ].join('\n');
     if (!confirm(previewMessage)) return;
@@ -1745,7 +1745,7 @@ if (saleTimeEditForm) saleTimeEditForm.addEventListener('submit', async (e) => {
 });
 
 clearAllBtn.addEventListener('click', async () => {
-  if (!confirm('确定清空云端全部商品和卖出记录吗？此操作会删除 Supabase 里的库存数据。')) return;
+  if (!confirm('二次确认：确定清空云端全部商品和卖出记录吗？此操作会删除 Supabase 里的库存数据，且不可撤销。')) return;
   const { error: delSalesError } = await supabaseClient.from('sales').delete().gte('sold_at', '1900-01-01T00:00:00Z');
   if (delSalesError) return alert('清空卖出记录失败：' + delSalesError.message);
   const { error: delItemsError } = await supabaseClient.from('items').delete().gte('updated_at', '1900-01-01T00:00:00Z');
