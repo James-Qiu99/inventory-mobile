@@ -380,7 +380,8 @@
     .sale-modal h3 { flex: 0 0 auto; }
     .sale-modal p { flex: 0 0 auto; }
     .sale-modal .sale-summary { flex: 0 0 auto; }
-    #saleForm {
+    #saleForm,
+    #editForm {
       display: flex;
       flex: 1 1 auto;
       flex-direction: column;
@@ -402,8 +403,16 @@
     .sale-form-body .field,
     .sale-form-body input,
     .sale-form-body textarea {
+      width: 100%;
       min-width: 0;
       max-width: 100%;
+    }
+    .sale-form-body input[type="datetime-local"] {
+      -webkit-appearance: none;
+      appearance: none;
+      font-size: 16px;
+      padding-left: 12px;
+      padding-right: 10px;
     }
     .sale-summary {
       border: 1px solid #dbeafe;
@@ -633,6 +642,7 @@
         max-height: calc(100dvh - 10px);
       }
       .sale-modal .form-grid { grid-template-columns: 1fr; }
+      .sale-form-body { padding-left: 0; padding-right: 0; }
       .sale-summary { font-size: 14px; margin-bottom: 12px; }
       .sale-quantity-input { min-height: 68px; font-size: 28px; }
       .sale-actions {
@@ -990,6 +1000,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./supabase-config.js?v=20260509j"></script>
-  <script src="./app.js?v=20260519d"></script>
+  <script src="./app.js?v=20260519e"></script>
 </body>
 </html>
