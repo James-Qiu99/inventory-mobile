@@ -95,6 +95,10 @@ function isEditableTarget(el) {
   return tag === 'input' || tag === 'textarea' || el.isContentEditable;
 }
 
+function shouldAutoFocusSaleInput() {
+  return !window.matchMedia('(max-width: 900px), (pointer: coarse)').matches;
+}
+
 
 let items = [];
 let saleLogs = [];
@@ -972,10 +976,12 @@ function openSaleModal(id) {
   if (saleTimeInput) saleTimeInput.value = toDatetimeLocalValue();
   saleNoteInput.value = '';
   saleModal.classList.add('show');
-  setTimeout(() => {
-    saleQuantityInput.focus();
-    saleQuantityInput.select();
-  }, 80);
+  if (shouldAutoFocusSaleInput()) {
+    setTimeout(() => {
+      saleQuantityInput.focus();
+      saleQuantityInput.select();
+    }, 80);
+  }
 }
 
 function closeSaleModal() {
@@ -1482,7 +1488,7 @@ restoreFile.addEventListener('change', async (e) => {
 saleCancelBtn.addEventListener('click', closeSaleModal);
 saleModal.addEventListener('click', (e) => {
   if (e.target === saleModal) {
-    saleQuantityInput?.focus();
+    if (shouldAutoFocusSaleInput()) saleQuantityInput?.focus();
   }
 });
 saleForm.addEventListener('submit', async (e) => {

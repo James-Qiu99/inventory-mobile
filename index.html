@@ -212,7 +212,7 @@
     .tag.gray { background: #f3f4f6; color: #4b5563; }
 
     .mobile-list { display: none; gap: 12px; }
-    .inventory-list { display: grid; gap: 10px; }
+    .inventory-list { display: none; gap: 10px; }
     .inventory-item {
       border: 1px solid #dbeafe;
       border-radius: 18px;
@@ -350,7 +350,7 @@
       align-items: flex-end;
       justify-content: center;
       padding: 0;
-      z-index: 50;
+      z-index: 120;
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
     }
@@ -376,10 +376,21 @@
     }
     .sale-modal h3 { flex: 0 0 auto; }
     .sale-modal p { flex: 0 0 auto; }
+    .sale-modal .sale-summary { flex: 0 0 auto; }
+    #saleForm {
+      display: flex;
+      flex: 1 1 auto;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
     .sale-form-body {
+      flex: 1 1 auto;
+      min-height: 0;
       overflow: auto;
       padding: 2px 2px 14px;
       overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
     }
     .sale-form-body .form-grid { gap: 14px; }
     .sale-summary {
@@ -410,6 +421,9 @@
       border-top: 1px solid var(--line);
       flex: 0 0 auto;
       background: rgba(255,255,255,.96);
+      position: sticky;
+      bottom: 0;
+      z-index: 1;
     }
     .sale-actions button {
       min-height: 56px;
@@ -575,7 +589,8 @@
       .toolbar input, .toolbar select, .toolbar button, .toolbar .button { width: 100%; }
       .table-wrap { display: none; }
       .sale-mobile-list { display: grid; }
-      .mobile-list { display: grid; }
+      .mobile-list,
+      .inventory-list { display: grid; }
       .inventory-grid { grid-template-columns: 1fr 1fr; }
       .hero h1 { font-size: 28px; }
       body { padding: 12px 12px 96px; }
@@ -601,11 +616,19 @@
       input, textarea, select { min-height: 52px; }
       .month-select { width: 100%; }
       .modal { padding: 16px 16px max(20px, env(safe-area-inset-bottom)); border-radius: 22px 22px 0 0; }
-      .sale-modal { max-height: 88vh; }
+      .sale-modal {
+        max-height: calc(100vh - 10px);
+        max-height: calc(100dvh - 10px);
+      }
       .sale-modal .form-grid { grid-template-columns: 1fr; }
       .sale-summary { font-size: 14px; margin-bottom: 12px; }
       .sale-quantity-input { min-height: 68px; font-size: 28px; }
-      .sale-actions { grid-template-columns: 1fr; gap: 10px; padding-top: 12px; }
+      .sale-actions {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        padding-top: 12px;
+        padding-bottom: env(safe-area-inset-bottom);
+      }
       .sale-actions button { min-height: 58px; font-size: 17px; }
       .sale-actions .ghost { min-height: 50px; }
       #saveAndNextBtn { width: 100%; }
@@ -631,7 +654,7 @@
       <div class="dashboard-headline">
         <div>
           <div class="dashboard-kicker">Dashboard</div>
-          <div class="dashboard-title">手机工作台</div>
+          <div class="dashboard-title">库存工作台</div>
         </div>
         <div class="dashboard-pill">📱</div>
       </div>
@@ -755,6 +778,29 @@
         </div>
       </div>
 
+      <div class="table-wrap inventory-table-wrap" style="margin-top:12px;">
+        <table>
+          <thead>
+            <tr>
+              <th>商品</th>
+              <th>分类</th>
+              <th>SKU</th>
+              <th>进价</th>
+              <th>预估售价</th>
+              <th>成交价</th>
+              <th>进货</th>
+              <th>已售</th>
+              <th>剩余</th>
+              <th>总成本</th>
+              <th>已实现利润</th>
+              <th>利润率</th>
+              <th>备注</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
       <div id="inventoryList" class="inventory-list" style="margin-top:12px;"></div>
       <div class="pagination-bar">
         <div id="pageInfo" class="pagination-info">共 0 条</div>
