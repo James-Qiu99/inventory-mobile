@@ -99,6 +99,30 @@ function shouldAutoFocusSaleInput() {
   return !window.matchMedia('(max-width: 900px), (pointer: coarse)').matches;
 }
 
+let lockedScrollY = 0;
+
+function lockPageScroll() {
+  if (document.body.classList.contains('modal-open')) return;
+  lockedScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+  document.body.classList.add('modal-open');
+  document.body.style.position = 'fixed';
+  document.body.style.top = `-${lockedScrollY}px`;
+  document.body.style.left = '0';
+  document.body.style.right = '0';
+  document.body.style.width = '100%';
+}
+
+function unlockPageScroll() {
+  if (!document.body.classList.contains('modal-open')) return;
+  document.body.classList.remove('modal-open');
+  document.body.style.position = '';
+  document.body.style.top = '';
+  document.body.style.left = '';
+  document.body.style.right = '';
+  document.body.style.width = '';
+  window.scrollTo(0, lockedScrollY);
+}
+
 
 let items = [];
 let saleLogs = [];
@@ -976,6 +1000,7 @@ function openSaleModal(id) {
   if (saleTimeInput) saleTimeInput.value = toDatetimeLocalValue();
   saleNoteInput.value = '';
   saleModal.classList.add('show');
+  lockPageScroll();
   if (shouldAutoFocusSaleInput()) {
     setTimeout(() => {
       saleQuantityInput.focus();
@@ -990,6 +1015,7 @@ function closeSaleModal() {
   saleQuantityInput.removeAttribute('max');
   saleForm.reset();
   saleModal.classList.remove('show');
+  unlockPageScroll();
 }
 
 function setSaleSubmitting(active) {
@@ -1075,8 +1101,8 @@ function resetForm() {
   applyQuickEntryMode();
 }
 
-function getFormData() {
-  const existingItem = editingId ? items.find((item) => item.id === editingId) : null;
+function getFormData(existingEditingItem = null) {
+  const existingItem = existingEditingItem || (editingId ? items.find((item) => item.id === editingId) : null);
   const marketPrice = toNumber(document.getElementById('marketPrice').value);
   return {
     id: editingId || crypto.randomUUID(),
@@ -1274,7 +1300,15 @@ function formatBackupFileName(date = new Date()) {
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const data = getFormData();
+  const existingEditingItem = editingId ? items.find((item) => item.id === editingId) : null;
+  if (editingId && !existingEditingItem) {
+    alert('当前编辑的商品没有在最新库存里找到，请刷新后重新编辑。');
+    await refreshInventory();
+    resetForm();
+    return;
+  }
+
+  const data = getFormData(existingEditingItem);
   if (!data.name) {
     alert('请填写商品名称。');
     return;
@@ -1287,7 +1321,20 @@ form.addEventListener('submit', async (e) => {
   let error = null;
 
   if (editingId) {
-    ({ error } = await supabaseClient.from('items').update(data).eq('id', data.id));
+    const { id, ...updateData } = data;
+    const { data: updatedItem, error: updateError } = await supabaseClient
+      .from('items')
+      .update(updateData)
+      .eq('id', id)
+      .select('id')
+      .maybeSingle();
+    error = updateError;
+    if (!error && !updatedItem) {
+      alert('更新失败：没有找到要编辑的商品，请刷新后重新编辑。');
+      await refreshInventory();
+      resetForm();
+      return;
+    }
   } else {
     const mergeCandidate = await findMergeCandidate(data);
     if (mergeCandidate) {

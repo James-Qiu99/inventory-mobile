@@ -26,6 +26,7 @@
     * { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; color: var(--text); background: var(--bg); font-size: 18px; }
     body { padding: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    body.modal-open { overflow: hidden; }
 
     .container { max-width: 1200px; margin: 0 auto; padding-top: 74px; }
     .hero {
@@ -679,57 +680,57 @@
           <button type="button" class="category-chip" data-category="服饰">服饰</button>
           <button type="button" class="category-chip" data-category="其他">其他</button>
         </div>
-        <details class="form-steps" open id="primaryFieldsBlock">
-          <summary>第一步：先填核心字段</summary>
         <form id="itemForm">
-          <div class="form-grid">
-            <div class="field">
-              <label for="name">商品名称</label>
-              <input id="name" required placeholder="例如：iPhone 15 Pro" />
+          <details class="form-steps" open id="primaryFieldsBlock">
+            <summary>第一步：先填核心字段</summary>
+            <div class="form-grid">
+              <div class="field">
+                <label for="name">商品名称</label>
+                <input id="name" required placeholder="例如：iPhone 15 Pro" />
+              </div>
+              <div class="field">
+                <label for="category">分类</label>
+                <input id="category" placeholder="例如：Jellycat / 泡泡玛特 / 化妆品" />
+              </div>
+              <div class="field">
+                <label for="sku">编号 / SKU</label>
+                <input id="sku" placeholder="例如：A-001" />
+              </div>
+              <div class="field">
+                <label for="supplier">供货渠道</label>
+                <input id="supplier" placeholder="例如：深圳华强北" />
+              </div>
+              <div class="field">
+                <label for="costPrice">进价（单价）</label>
+                <input id="costPrice" type="number" min="0" step="0.01" placeholder="0" />
+              </div>
+              <div class="field">
+                <label for="marketPrice">预估售价（单价）</label>
+                <input id="marketPrice" type="number" min="0" step="0.01" placeholder="0" />
+              </div>
+              <div class="field">
+                <label for="quantity">进货数量</label>
+                <input id="quantity" type="number" min="0" step="1" placeholder="0" />
+              </div>
             </div>
-            <div class="field">
-              <label for="category">分类</label>
-              <input id="category" placeholder="例如：Jellycat / 泡泡玛特 / 化妆品" />
+          </details>
+          <details class="form-steps" id="extraFieldsBlock">
+            <summary>第二步：补充更多信息（可选）</summary>
+            <div class="form-grid" style="margin-top:12px;">
+              <div class="field">
+                <label for="location">存放位置</label>
+                <input id="location" placeholder="例如：仓库 A / 家里柜子" />
+              </div>
+              <div class="field full">
+                <label for="note">备注</label>
+                <textarea id="note" placeholder="可写进货批次 / 时间 / 不同进价 / 颜色规格等"></textarea>
+              </div>
             </div>
-            <div class="field">
-              <label for="sku">编号 / SKU</label>
-              <input id="sku" placeholder="例如：A-001" />
-            </div>
-            <div class="field">
-              <label for="supplier">供货渠道</label>
-              <input id="supplier" placeholder="例如：深圳华强北" />
-            </div>
-            <div class="field">
-              <label for="costPrice">进价（单价）</label>
-              <input id="costPrice" type="number" min="0" step="0.01" placeholder="0" />
-            </div>
-            <div class="field">
-              <label for="marketPrice">预估售价（单价）</label>
-              <input id="marketPrice" type="number" min="0" step="0.01" placeholder="0" />
-            </div>
-            <div class="field">
-              <label for="quantity">进货数量</label>
-              <input id="quantity" type="number" min="0" step="1" placeholder="0" />
-            </div>
-            </details>
-        <details class="form-steps" id="extraFieldsBlock">
-          <summary>第二步：补充更多信息（可选）</summary>
-          <div class="form-grid" style="margin-top:12px;">
-            <div class="field">
-              <label for="location">存放位置</label>
-              <input id="location" placeholder="例如：仓库 A / 家里柜子" />
-            </div>
-            <div class="field full">
-              <label for="note">备注</label>
-              <textarea id="note" placeholder="可写进货批次 / 时间 / 不同进价 / 颜色规格等"></textarea>
-            </div>
-          </div>
-          </div>
-        </details>
-            <div class="actions form-actions">
-              <button type="submit" class="primary" id="submitBtn">保存商品</button>
-              <button type="button" class="secondary" id="saveAndNextBtn">保存并继续录入</button>
-              <button type="button" class="ghost" id="resetBtn">清空表单</button>
+          </details>
+          <div class="actions form-actions">
+            <button type="submit" class="primary" id="submitBtn">保存商品</button>
+            <button type="button" class="secondary" id="saveAndNextBtn">保存并继续录入</button>
+            <button type="button" class="ghost" id="resetBtn">清空表单</button>
           </div>
           <div class="compact-note">连续录入时可用“保存并继续录入”，会保留分类等常用值。</div>
         </form>
@@ -922,6 +923,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./supabase-config.js?v=20260509j"></script>
-  <script src="./app.js?v=20260513a"></script>
+  <script src="./app.js?v=20260519a"></script>
 </body>
 </html>
