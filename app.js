@@ -555,7 +555,6 @@ function renderWorkbench() {
       <div class="dashboard-group">
         <div class="dashboard-group-head">
           <span>今日</span>
-          <span class="dashboard-group-sub">固定为今天</span>
         </div>
         <div class="dashboard-metrics">
           ${metric('利润', moneyShort(period.dayProfit), true)}
@@ -567,7 +566,6 @@ function renderWorkbench() {
       <div class="dashboard-group">
         <div class="dashboard-group-head">
           <span>${monthLabel}</span>
-          <span class="dashboard-group-sub">跟随月份</span>
         </div>
         <div class="dashboard-metrics">
           ${metric('利润', moneyShort(period.monthProfit), true)}
@@ -579,7 +577,6 @@ function renderWorkbench() {
       <div class="dashboard-group">
         <div class="dashboard-group-head">
           <span>当前库存</span>
-          <span class="dashboard-group-sub">实时状态</span>
         </div>
         <div class="dashboard-metrics">
           ${metric('剩余库存', `${toNumber(summary.remaining_units)} 件`, true)}
