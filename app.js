@@ -754,10 +754,6 @@ function renderInventoryList() {
           <div class="inventory-metric"><div class="k">预估售价</div><div class="v">${moneyOrPending(c.estimatedPrice)}</div></div>
           <div class="inventory-metric"><div class="k">已售 / 进货</div><div class="v">${c.soldQuantity} / ${c.quantity}</div></div>
         </div>
-        <div class="inventory-primary-action">
-          <button class="primary" onclick="sellItem('${item.id}')">登记卖出</button>
-          <button class="secondary" onclick="editItem('${item.id}')">编辑</button>
-        </div>
         <div class="inventory-body">
           <div class="inventory-banner ${lowClass}">
             <div>
@@ -776,7 +772,11 @@ function renderInventoryList() {
           </div>
           ${detailHtml ? `<div class="inventory-note-list">${detailHtml}</div>` : ''}
           ${noteHtml}
-          <div class="inventory-primary-action single">
+          <div class="inventory-primary-action">
+            <button class="primary" onclick="sellItem('${item.id}')">登记卖出</button>
+            <button class="secondary" onclick="editItem('${item.id}')">编辑商品</button>
+          </div>
+          <div class="inventory-danger-zone">
             <button class="danger" onclick="deleteItem('${item.id}')">删除</button>
           </div>
         </div>

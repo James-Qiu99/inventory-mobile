@@ -328,26 +328,31 @@
     .inventory-price { font-size: 20px; font-weight: 800; color: #111827; line-height: 1.05; }
     .inventory-remaining { font-size: 24px; font-weight: 850; line-height: 1; color:var(--primary-dark); }
     .inventory-body {
-      margin-top: 10px;
-      padding-top: 10px;
+      margin-top: 12px;
+      padding-top: 12px;
       border-top: 1px solid var(--line);
     }
-    .inventory-quick-row { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:8px; margin: 10px 0; }
+    .inventory-quick-row { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:8px; margin: 12px 0; }
     .inventory-metric { border:1px solid var(--line); background:var(--surface-soft); border-radius:8px; padding:9px; min-width:0; }
     .inventory-metric .k { font-size:11px; color:var(--muted); line-height:1.2; margin-bottom:4px; }
     .inventory-metric .v { font-size:15px; font-weight:800; line-height:1.25; word-break:break-word; }
-    .inventory-primary-action { display:grid; grid-template-columns: minmax(0,1.35fr) minmax(0,.9fr); gap:8px; margin-top:10px; }
+    .inventory-primary-action { display:grid; grid-template-columns: minmax(0,1.35fr) minmax(0,.9fr); gap:8px; margin-top:12px; }
     .inventory-primary-action button { width:100%; min-height:44px; box-shadow:none; }
-    .inventory-primary-action.single { grid-template-columns: 1fr; }
+    .inventory-danger-zone {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed rgba(185,28,28,.22);
+    }
+    .inventory-danger-zone button { width:100%; min-height:42px; box-shadow:none; }
     .icon-inline { font-size: 14px; opacity: .9; }
-    .inventory-banner { display:flex; align-items:center; justify-content:space-between; gap:10px; padding: 9px 10px; border-radius: 8px; background:var(--primary-soft); border:1px solid #99f6e4; margin-bottom:8px; }
+    .inventory-banner { display:flex; align-items:center; justify-content:space-between; gap:10px; padding: 10px 11px; border-radius: 8px; background:var(--primary-soft); border:1px solid #99f6e4; margin-bottom:10px; }
     .inventory-banner.low { background:var(--warn-soft); border-color:#fdba74; box-shadow: inset 0 0 0 1px rgba(249,115,22,.08); }
     .inventory-banner .big { font-size: 18px; font-weight: 800; }
     .inventory-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 6px;
-      margin-bottom: 8px;
+      gap: 8px;
+      margin-bottom: 10px;
     }
     .mini {
       background: #f9fafb;
