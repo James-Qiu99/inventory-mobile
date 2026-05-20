@@ -62,7 +62,6 @@
     .dashboard-kicker { font-size: 12px; font-weight: 800; letter-spacing: .08em; opacity: .72; text-transform: uppercase; }
     .dashboard-title { margin: 4px 0 0; font-size: 26px; line-height: 1.1; font-weight: 800; }
     .dashboard-subtitle { margin-top: 8px; color: rgba(255,255,255,.72); font-size: 14px; line-height: 1.5; }
-    .dashboard-pill { display:inline-flex; align-items:center; justify-content:center; min-width:44px; height:44px; border-radius:10px; background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.18); font-size:12px; font-weight:800; letter-spacing:.08em; box-shadow: inset 0 1px 0 rgba(255,255,255,.12); }
 
     .grid { display: grid; gap: 16px; }
     .grid.top { grid-template-columns: 1.1fr .9fr; }
@@ -717,8 +716,49 @@
     .form-steps { margin-top:12px; border:1px solid var(--line); border-radius:var(--radius); padding:12px; background:#fcfcfd; }
     .form-steps summary { cursor:pointer; font-weight:700; color:#111827; }
     .form-steps summary::marker { color:var(--primary); }
-    .entry-toast { position: sticky; top: 10px; z-index: 40; display:none; margin-top:12px; padding:10px 12px; border-radius:999px; background:rgba(15,118,110,.96); color:#fff; font-size:13px; font-weight:700; text-align:center; box-shadow:0 10px 24px rgba(15,118,110,.18); }
     .field-highlight input { border-color: var(--primary) !important; box-shadow: 0 0 0 5px rgba(15,118,110,.14) !important; background:var(--surface-soft) !important; }
+    .toast-host {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      z-index: 220;
+      width: min(420px, calc(100vw - 24px));
+      transform: translate(-50%, 18px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .18s ease, transform .22s ease;
+    }
+    .toast-host.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+    .toast {
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-height:48px;
+      padding: 11px 14px;
+      border-radius: 12px;
+      background: rgba(15,23,42,.94);
+      color:#fff;
+      box-shadow: 0 14px 34px rgba(15,23,42,.18);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      font-size:14px;
+      font-weight:700;
+      line-height:1.35;
+    }
+    .toast::before {
+      content:"";
+      width:9px;
+      height:16px;
+      border-right:2px solid #5eead4;
+      border-bottom:2px solid #5eead4;
+      transform: rotate(42deg);
+      flex:0 0 auto;
+      margin-left:2px;
+      margin-top:-3px;
+    }
     .low-stock-alert {
       border:1px solid #fdba74;
       background:var(--warn-soft);
@@ -776,11 +816,6 @@
       }
 
       .dashboard-title { font-size: 32px; }
-
-      .dashboard-pill {
-        align-self: flex-start;
-        margin-top: auto;
-      }
 
       .workbench-grid {
         grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -938,6 +973,9 @@
         visibility: hidden;
         transform: translateY(110%);
       }
+      .toast-host {
+        bottom: max(76px, calc(76px + env(safe-area-inset-bottom)));
+      }
       .sale-mobile-actions {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -1000,7 +1038,6 @@
           <div class="dashboard-title">库存工作台</div>
           <div class="dashboard-subtitle">优先处理今日卖出、低库存和可售库存。</div>
         </div>
-        <div class="dashboard-pill">LIVE</div>
       </div>
       <div class="workbench-grid" id="workbenchGrid"></div>
     </section>
@@ -1008,7 +1045,6 @@
     <section class="grid top section-block tight-top">
       <div class="card section-anchor form-card-top" id="formSection">
         <h2 id="formTitle" class="form-card-title">新增商品</h2>
-        <div id="entryReadyBanner" class="entry-toast">已保存，继续录入下一条</div>
         <div class="quick-entry-switch">
           <label class="quick-entry-label">
             <input type="checkbox" id="quickEntryMode" checked />
@@ -1226,6 +1262,10 @@
       <button class="ghost quick-secondary-btn" id="quickSalesBtn" type="button">看卖出</button>
       <button class="ghost quick-icon-btn" id="quickTopBtn" type="button" aria-label="回到顶部"></button>
     </div>
+  </div>
+
+  <div id="toastHost" class="toast-host" role="status" aria-live="polite">
+    <div id="toastMessage" class="toast"></div>
   </div>
 
   <div id="saleModal" class="modal-backdrop">

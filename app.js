@@ -84,8 +84,9 @@ const quickListBtn = document.getElementById('quickListBtn');
 const quickSalesBtn = document.getElementById('quickSalesBtn');
 const quickTopBtn = document.getElementById('quickTopBtn');
 const categoryChips = [...document.querySelectorAll('.category-chip')];
-const entryReadyBanner = document.getElementById('entryReadyBanner');
 const profitMonthSelect = document.getElementById('profitMonthSelect');
+const toastHost = document.getElementById('toastHost');
+const toastMessage = document.getElementById('toastMessage');
 
 function scrollToSection(id, offset = 0) {
   const el = document.getElementById(id);
@@ -107,6 +108,16 @@ function scrollToAnchoredSection(id, extra = 14) {
 function setQuickActionsVisibilityByInput(active) {
   if (!quickActions) return;
   quickActions.classList.toggle('hidden-by-input', !!active);
+}
+
+function showToast(message) {
+  if (!toastHost || !toastMessage) return;
+  toastMessage.textContent = message;
+  toastHost.classList.add('show');
+  clearTimeout(showToast._timer);
+  showToast._timer = setTimeout(() => {
+    toastHost.classList.remove('show');
+  }, 2200);
 }
 
 function isEditableTarget(el) {
@@ -987,6 +998,7 @@ async function removeSaleRecord(id) {
   }
 
   await refreshInventory();
+  showToast(`已删除卖出记录：${sale.item_name || '未命名商品'}，库存已恢复`);
 }
 
 async function updateSaleRecordTime(id) {
@@ -1076,15 +1088,6 @@ function setActiveCategoryChip(value = '') {
   categoryChips.forEach((chip) => chip.classList.toggle('active', chip.dataset.category === value));
 }
 
-function flashEntryReadyBanner() {
-  if (!entryReadyBanner) return;
-  entryReadyBanner.style.display = 'block';
-  clearTimeout(flashEntryReadyBanner._timer);
-  flashEntryReadyBanner._timer = setTimeout(() => {
-    entryReadyBanner.style.display = 'none';
-  }, 1600);
-}
-
 function flashNameField() {
   const nameField = document.getElementById('name')?.closest('.field');
   if (!nameField) return;
@@ -1128,7 +1131,6 @@ function resetForm() {
     setTimeout(() => {
       if (primaryFieldsBlock) primaryFieldsBlock.setAttribute('open', 'open');
       scrollToSection('formSection');
-      flashEntryReadyBanner();
       flashNameField();
       const nameInput = document.getElementById('name');
       if (nameInput) {
@@ -1312,6 +1314,7 @@ async function removeItem(id) {
   if (editingId === id) resetForm();
   await applyQuickEntryMode();
   await refreshInventory();
+  showToast(`已删除：${item.name || '未命名商品'}`);
 }
 function stockTag(remaining) {
   if (remaining === 0) return '<span class="tag gray">已售空</span>';
@@ -1370,6 +1373,7 @@ function exportCSV() {
     a.download = '库存数据导出.csv';
     a.click();
     URL.revokeObjectURL(url);
+    showToast('已导出 CSV');
   }).catch((error) => {
     alert('导出失败：' + (error?.message || '请检查 Supabase 配置'));
   });
@@ -1430,7 +1434,12 @@ form.addEventListener('submit', async (e) => {
   }
   await applyQuickEntryMode();
   await refreshInventory({ resetPage: true });
+  const savedName = data.name || '未命名商品';
+  const toastText = keepFormValuesForNext
+    ? `已保存：${savedName}，继续录入下一条`
+    : `已保存：${savedName}`;
   resetForm();
+  showToast(toastText);
 });
 
 resetBtn.addEventListener('click', () => { keepFormValuesForNext = false; resetForm(); });
@@ -1531,6 +1540,7 @@ backupBtn.addEventListener('click', async () => {
     a.download = formatBackupFileName();
     a.click();
     URL.revokeObjectURL(url);
+    showToast('已生成备份 JSON');
   } catch (error) {
     alert('备份失败：' + (error?.message || '请检查 Supabase 配置'));
   }
@@ -1583,7 +1593,7 @@ restoreFile.addEventListener('change', async (e) => {
     await applyQuickEntryMode();
     await refreshInventory({ resetPage: true });
     resetForm();
-    alert(`恢复成功：已导入 ${data.items.length} 条商品，${importedSales.length} 条卖出记录。`);
+    showToast(`已恢复：${data.items.length} 条商品，${importedSales.length} 条卖出记录`);
   } catch (err) {
     alert('恢复失败：' + (err?.message || '文件格式错误'));
   } finally {
@@ -1638,6 +1648,7 @@ editForm.addEventListener('submit', async (e) => {
 
     await refreshInventory();
     closeEditModal();
+    showToast(`已更新：${data.name || '未命名商品'}`);
   } finally {
     setEditSubmitting(false);
   }
@@ -1714,6 +1725,7 @@ saleForm.addEventListener('submit', async (e) => {
     await applyQuickEntryMode();
     await refreshInventory();
     closeSaleModal();
+    showToast(`已登记卖出：${item.name || '未命名商品'} × ${saleQty}`);
   } finally {
     setSaleSubmitting(false);
   }
@@ -1749,6 +1761,7 @@ if (saleTimeEditForm) saleTimeEditForm.addEventListener('submit', async (e) => {
     }
     await refreshInventory();
     closeSaleTimeEditModal();
+    showToast(`已更新时间：${sale.item_name || '未命名商品'}`);
   } finally {
     setSaleTimeEditSubmitting(false);
   }
@@ -1763,6 +1776,7 @@ clearAllBtn.addEventListener('click', async () => {
   await applyQuickEntryMode();
   await refreshInventory({ resetPage: true });
   resetForm();
+  showToast('已清空全部库存和卖出记录');
 });
 
 window.editItem = function(id) {
