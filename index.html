@@ -75,6 +75,8 @@
     .grid { display: grid; gap: 16px; }
     .grid.top { grid-template-columns: 1.1fr .9fr; }
     .card {
+      position: relative;
+      overflow: hidden;
       background: var(--card);
       border: 1px solid var(--line);
       border-radius: var(--radius);
@@ -83,6 +85,16 @@
       transition: transform .18s ease, box-shadow .18s ease;
       backdrop-filter: blur(18px);
       -webkit-backdrop-filter: blur(18px);
+    }
+    .card::before {
+      content:"";
+      position:absolute;
+      top:0;
+      left:0;
+      right:0;
+      height:3px;
+      background:rgba(15,118,110,.42);
+      pointer-events:none;
     }
     .card:active { transform: scale(.995); }
     .card h2 {
@@ -593,7 +605,7 @@
     .quick-actions.hidden-by-input { opacity: 0; transform: translateY(16px); pointer-events: none; }
     .quick-actions-inner {
       display: grid;
-      grid-template-columns: 1.15fr 1fr 1fr .72fr;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 8px;
       padding: 8px;
       background: rgba(255,255,255,.9);
@@ -613,9 +625,6 @@
     .quick-primary-btn { box-shadow: 0 10px 22px rgba(15,118,110,.22); }
     .quick-secondary-btn { background: rgba(17,24,39,.04); color:#374151; box-shadow:none; }
     .quick-secondary-btn:hover { background: rgba(17,24,39,.07); }
-    .quick-icon-btn { padding: 0; min-width: 46px; font-size: 0; background: rgba(17,24,39,.03); color:#6b7280; box-shadow:none; position:relative; }
-    .quick-icon-btn::before { content:""; width:10px; height:10px; border-left:2px solid currentColor; border-top:2px solid currentColor; transform:rotate(45deg); margin-top:6px; }
-    .quick-icon-btn:hover { background: rgba(17,24,39,.06); color:#374151; }
     .form-card-top {
       margin-top: -4px;
       padding-top: 22px;
@@ -1230,10 +1239,10 @@
 
   <div class="quick-actions">
     <div class="quick-actions-inner">
-      <button class="primary quick-primary-btn" id="quickAddBtn" type="button">+ 新增商品</button>
-      <button class="ghost quick-secondary-btn" id="quickListBtn" type="button">看库存</button>
-      <button class="ghost quick-secondary-btn" id="quickSalesBtn" type="button">看卖出</button>
-      <button class="ghost quick-icon-btn" id="quickTopBtn" type="button" aria-label="回到顶部"></button>
+      <button class="primary quick-primary-btn" id="quickAddBtn" type="button">新增</button>
+      <button class="ghost quick-secondary-btn" id="quickListBtn" type="button">库存</button>
+      <button class="ghost quick-secondary-btn" id="quickSalesBtn" type="button">卖出</button>
+      <button class="ghost quick-secondary-btn" id="quickTopBtn" type="button">看板</button>
     </div>
   </div>
 
