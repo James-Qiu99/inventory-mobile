@@ -9,7 +9,6 @@ const form = document.getElementById('itemForm');
 const tableBody = document.getElementById('tableBody');
 const mobileList = document.getElementById('mobileList');
 const inventoryList = document.getElementById('inventoryList');
-const stats = document.getElementById('stats');
 const emptyState = document.getElementById('emptyState');
 const formTitle = document.getElementById('formTitle');
 const submitBtn = document.getElementById('submitBtn');
@@ -57,8 +56,6 @@ const saleTimeEditDesc = document.getElementById('saleTimeEditDesc');
 const saleTimeEditInput = document.getElementById('saleTimeEditInput');
 const saleTimeEditCancelBtn = document.getElementById('saleTimeEditCancelBtn');
 const saleTimeEditSubmitBtn = document.getElementById('saleTimeEditSubmitBtn');
-const lowStockAlert = document.getElementById('lowStockAlert');
-const periodStats = document.getElementById('periodStats');
 const saleRecords = document.getElementById('saleRecords');
 const workbenchGrid = document.getElementById('workbenchGrid');
 const searchResultMeta = document.getElementById('searchResultMeta');
@@ -183,6 +180,10 @@ function toNumber(value) {
 
 function money(n) {
   return '¥' + toNumber(n).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function moneyShort(n) {
+  return '¥' + toNumber(n).toLocaleString('zh-CN', { maximumFractionDigits: 0 });
 }
 
 function moneyOrPending(value, label = '待补') {
@@ -534,54 +535,86 @@ function renderSearchMeta() {
 
 function renderWorkbench() {
   if (!workbenchGrid) return;
+  updateProfitMonthSelect();
   const summary = getInventorySummary();
-  const period = computePeriodStats(getMonthKey(new Date()));
-  const totalRemaining = toNumber(summary.remaining_units);
+  const period = computePeriodStats();
+  const monthLabel = selectedProfitMonth === getMonthKey(new Date())
+    ? '本月'
+    : formatMonthLabel(selectedProfitMonth);
   const lowCount = toNumber(summary.low_stock_count);
-  const tiles = [
-    { label: '今日卖出', value: period.dayQty, sub: '跳转卖出记录', target: 'salesCard', tone: 'strong' },
-    { label: '本月利润', value: money(period.monthProfit), sub: '查看日 / 月统计', target: 'salesStatsCard', tone: 'strong' },
-    { label: '低库存', value: lowCount, sub: lowCount ? '需要尽快处理' : '暂无风险', target: 'lowStockAnchor', tone: lowCount ? 'alert' : '' },
-    { label: '剩余库存', value: totalRemaining, sub: '查看库存列表', target: 'listSection', tone: '' }
-  ];
-  workbenchGrid.innerHTML = tiles.map(({ label, value, sub, target, tone }) => `
-    <button class="workbench-tile ${tone}" type="button" data-target="${target}">
-      <div class="k"><span class="tile-icon" aria-hidden="true"></span>${label}</div>
+  const metric = (label, value, strong = false) => `
+    <div class="dashboard-metric ${strong ? 'strong' : ''}">
+      <div class="k">${label}</div>
       <div class="v">${value}</div>
-      ${sub ? `<div class="s">${sub}</div>` : ''}
-    </button>
-  `).join('');
-}
-
-function renderLowStockAlert() {
-  if (!lowStockAlert) return;
-  if (!inventoryLowStock.length) {
-    lowStockAlert.innerHTML = '<span class="tag">库存状态良好</span>';
-    return;
-  }
-  lowStockAlert.innerHTML = `
-    <div class="low-stock-alert">
-      <strong>低库存提醒：</strong>${inventoryLowStock.map((x) => `${escapeHtml(x.name)}（剩 ${toNumber(x.remaining)}）`).join('、')}
-    </div>`;
-}
-
-function renderStats() {
-  const summary = getInventorySummary();
-  const cards = [
-    ['商品种类', toNumber(summary.total_products), `共录入 ${toNumber(summary.total_products)} 种商品`],
-    ['进货总数量', toNumber(summary.total_units), `已售 ${toNumber(summary.sold_units)}，剩余 ${toNumber(summary.remaining_units)}`],
-    ['总进货成本', money(summary.total_cost), '按全部库存统计'],
-    ['已实现利润总额', money(summary.realized_profit), '按卖出记录真实成交价统计'],
-    ['预估剩余库存估计', money(summary.remaining_market_value), '预估售价 × 剩余库存']
-  ];
-
-  stats.innerHTML = cards.map(([label, value, hint]) => `
-    <div class="stat">
-      <div class="label">${label}</div>
-      <div class="value">${value}</div>
-      <div class="hint">${hint}</div>
     </div>
-  `).join('');
+  `;
+  const detailRow = (label, value) => `<div class="dashboard-detail-row"><span>${label}</span><strong>${value}</strong></div>`;
+
+  workbenchGrid.innerHTML = `
+    <div class="dashboard-board">
+      <div class="dashboard-group">
+        <div class="dashboard-group-head">
+          <span>今日</span>
+          <span class="dashboard-group-sub">固定为今天</span>
+        </div>
+        <div class="dashboard-metrics">
+          ${metric('利润', moneyShort(period.dayProfit), true)}
+          ${metric('销售额', moneyShort(period.dayRevenue))}
+          ${metric('卖出', `${period.dayQty} 件`)}
+        </div>
+      </div>
+
+      <div class="dashboard-group">
+        <div class="dashboard-group-head">
+          <span>${monthLabel}</span>
+          <span class="dashboard-group-sub">跟随月份</span>
+        </div>
+        <div class="dashboard-metrics">
+          ${metric('利润', moneyShort(period.monthProfit), true)}
+          ${metric('销售额', moneyShort(period.monthRevenue))}
+          ${metric('卖出', `${period.monthQty} 件`)}
+        </div>
+      </div>
+
+      <div class="dashboard-group">
+        <div class="dashboard-group-head">
+          <span>当前库存</span>
+          <span class="dashboard-group-sub">实时状态</span>
+        </div>
+        <div class="dashboard-metrics">
+          ${metric('剩余库存', `${toNumber(summary.remaining_units)} 件`, true)}
+          ${metric('商品种类', toNumber(summary.total_products))}
+          ${metric('总成本', moneyShort(summary.total_cost))}
+        </div>
+      </div>
+
+      ${lowCount ? `<button type="button" class="dashboard-alert" data-low-stock-filter="true">低库存：${lowCount} 个商品需要处理</button>` : ''}
+
+      <details class="dashboard-details">
+        <summary>展开更多数据</summary>
+        <div class="dashboard-detail-body">
+          <div class="dashboard-detail-group">
+            <div class="dashboard-detail-title">库存明细</div>
+            <div class="dashboard-detail-list">
+              ${detailRow('进货总数量', `${toNumber(summary.total_units)} 件`)}
+              ${detailRow('已售数量', `${toNumber(summary.sold_units)} 件`)}
+              ${detailRow('低库存', `${lowCount} 个`)}
+              ${detailRow('剩余库存估值', money(summary.remaining_market_value))}
+            </div>
+          </div>
+          <div class="dashboard-detail-group">
+            <div class="dashboard-detail-title">销售明细</div>
+            <div class="dashboard-detail-list">
+              ${detailRow('今日销售额', money(period.dayRevenue))}
+              ${detailRow('今日利润', money(period.dayProfit))}
+              ${detailRow(`${monthLabel}销售额`, money(period.monthRevenue))}
+              ${detailRow('累计已实现利润', money(summary.realized_profit))}
+            </div>
+          </div>
+        </div>
+      </details>
+    </div>
+  `;
 }
 
 async function loadInventoryPage({ page = inventoryPage, keepPage = true } = {}) {
@@ -692,27 +725,6 @@ function computePeriodStats(monthKey = selectedProfitMonth) {
     monthRevenue: sum(monthLogs,'revenue'),
     monthProfit: sum(monthLogs,'profit')
   };
-}
-
-function renderPeriodStats() {
-  updateProfitMonthSelect();
-  const p = computePeriodStats();
-  const monthLabel = formatMonthLabel(selectedProfitMonth);
-  const cards = [
-    ['今日卖出件数', p.dayQty, '按卖出记录统计'],
-    ['今日销售额', money(p.dayRevenue), '成交单价 × 数量'],
-    ['今日利润', money(p.dayProfit), '成交价 - 成本价'],
-    [`${monthLabel}卖出件数`, p.monthQty, '按所选月份统计'],
-    [`${monthLabel}销售额`, money(p.monthRevenue), '所选月份累计'],
-    [`${monthLabel}利润`, money(p.monthProfit), '所选月份累计']
-  ];
-  periodStats.innerHTML = cards.map(([label, value, hint]) => `
-    <div class="stat">
-      <div class="label">${label}</div>
-      <div class="value">${value}</div>
-      <div class="hint">${hint}</div>
-    </div>
-  `).join('');
 }
 
 function renderInventoryList() {
@@ -890,9 +902,6 @@ function render() {
   renderCategoryFilterOptions();
   renderSearchMeta();
   renderWorkbench();
-  renderStats();
-  renderLowStockAlert();
-  renderPeriodStats();
   renderSaleRecords();
   renderInventoryList();
   renderLegacyInventory();
@@ -1505,7 +1514,6 @@ if (pageNumbers) pageNumbers.addEventListener('click', (event) => {
 if (profitMonthSelect) profitMonthSelect.addEventListener('change', () => {
   selectedProfitMonth = profitMonthSelect.value || getMonthKey(new Date());
   renderWorkbench();
-  renderPeriodStats();
 });
 if (firstSalesPageBtn) firstSalesPageBtn.addEventListener('click', () => goToSalesPage(1));
 if (prevSalesPageBtn) prevSalesPageBtn.addEventListener('click', () => {
@@ -1812,6 +1820,12 @@ if (quickListBtn) quickListBtn.addEventListener('click', () => scrollToAnchoredS
 if (quickSalesBtn) quickSalesBtn.addEventListener('click', () => scrollToAnchoredSection('salesCard'));
 if (quickTopBtn) quickTopBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 if (workbenchGrid) workbenchGrid.addEventListener('click', (event) => {
+  const lowStockTrigger = event.target.closest('[data-low-stock-filter]');
+  if (lowStockTrigger) {
+    if (stockFilter) stockFilter.value = 'lowStock';
+    refreshInventory({ resetPage: true }).then(() => scrollToAnchoredSection('listSection'));
+    return;
+  }
   const trigger = event.target.closest('[data-target]');
   if (!trigger) return;
   scrollToAnchoredSection(trigger.dataset.target);
