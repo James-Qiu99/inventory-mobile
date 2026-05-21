@@ -24,7 +24,6 @@ const exportBtn = document.getElementById('exportBtn');
 const backupBtn = document.getElementById('backupBtn');
 const restoreBtn = document.getElementById('restoreBtn');
 const restoreFile = document.getElementById('restoreFile');
-const clearAllBtn = document.getElementById('clearAllBtn');
 const syncStatus = document.getElementById('syncStatus');
 const saleModal = document.getElementById('saleModal');
 const saleForm = document.getElementById('saleForm');
@@ -1716,18 +1715,6 @@ if (saleTimeEditForm) saleTimeEditForm.addEventListener('submit', async (e) => {
   } finally {
     setSaleTimeEditSubmitting(false);
   }
-});
-
-clearAllBtn.addEventListener('click', async () => {
-  if (!confirm('二次确认：确定清空云端全部商品和卖出记录吗？此操作会删除 Supabase 里的库存数据，且不可撤销。')) return;
-  const { error: delSalesError } = await supabaseClient.from('sales').delete().gte('sold_at', '1900-01-01T00:00:00Z');
-  if (delSalesError) return alert('清空卖出记录失败：' + delSalesError.message);
-  const { error: delItemsError } = await supabaseClient.from('items').delete().gte('updated_at', '1900-01-01T00:00:00Z');
-  if (delItemsError) return alert('清空商品失败：' + delItemsError.message);
-  await applyQuickEntryMode();
-  await refreshInventory({ resetPage: true });
-  resetForm();
-  showToast('已清空全部库存和卖出记录');
 });
 
 window.editItem = function(id) {
