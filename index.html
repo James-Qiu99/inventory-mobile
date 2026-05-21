@@ -357,7 +357,6 @@
       border-radius:4px;
     }
 
-    .mobile-list { display: none; gap: 12px; }
     .inventory-list { display: none; gap: 10px; }
     .inventory-item {
       border: 1px solid var(--line);
@@ -692,25 +691,8 @@
       font-size: 14px;
       font-weight: 700;
     }
-    .mobile-priority {
-      display: none;
-      margin-top: 12px;
-      padding: 12px;
-      border-radius: var(--radius);
-      background: var(--surface);
-      border: 1px solid var(--line);
-    }
     .section-title-row { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
     .section-kicker { font-size:13px; color:var(--muted); }
-    .mobile-priority-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 10px;
-    }
-    .mobile-priority .mini {
-      background: var(--primary-soft);
-      border: 1px solid #99f6e4;
-    }
     .compact-note {
       font-size: 13px;
       color: var(--muted);
@@ -990,7 +972,6 @@
       .toolbar input, .toolbar select, .toolbar button, .toolbar .button { width: 100%; }
       .table-wrap { display: none; }
       .sale-mobile-list { display: grid; }
-      .mobile-list,
       .inventory-list { display: grid; }
       .inventory-grid { grid-template-columns: 1fr 1fr; }
       .hero h1 { font-size: 28px; }
@@ -1008,8 +989,6 @@
       .dashboard-metric .v { font-size:21px; }
       .dashboard-detail-body { grid-template-columns:1fr; }
       .sync-status { font-size: 13px; }
-      .mobile-meta { grid-template-columns: 1fr 1fr; }
-      .mobile-priority { display: block; }
       .quick-actions {
         display: block;
         position: fixed;
@@ -1102,13 +1081,7 @@
           </label>
           <div class="compact-note">开启后，更适合连续在 iPhone 上快速录货。</div>
         </div>
-        <div class="quick-category-row" id="quickCategoryRow">
-          <button type="button" class="category-chip" data-category="Jellycat">Jellycat</button>
-          <button type="button" class="category-chip" data-category="泡泡玛特">泡泡玛特</button>
-          <button type="button" class="category-chip" data-category="化妆品">化妆品</button>
-          <button type="button" class="category-chip" data-category="服饰">服饰</button>
-          <button type="button" class="category-chip" data-category="其他">其他</button>
-        </div>
+        <div class="quick-category-row" id="quickCategoryRow"></div>
         <form id="itemForm">
           <details class="form-steps" open id="primaryFieldsBlock">
             <summary>核心字段</summary>
@@ -1204,12 +1177,12 @@
               <th>SKU</th>
               <th class="num">进价</th>
               <th class="num">预估售价</th>
-              <th class="num">成交价</th>
               <th class="num">进货</th>
               <th class="num">已售</th>
               <th class="num">剩余</th>
               <th class="num">总成本</th>
               <th class="num">已实现利润</th>
+              <th class="num">预计利润</th>
               <th class="num">利润率</th>
               <th>备注</th>
               <th class="actions-col">操作</th>
@@ -1413,6 +1386,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./supabase-config.js?v=20260509j"></script>
-  <script src="./app.js?v=20260520b"></script>
+  <script src="./app.js?v=20260521a"></script>
 </body>
 </html>

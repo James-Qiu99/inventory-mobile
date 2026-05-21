@@ -7,7 +7,6 @@ const INVENTORY_TABLE = 'items';
 
 const form = document.getElementById('itemForm');
 const tableBody = document.getElementById('tableBody');
-const mobileList = document.getElementById('mobileList');
 const inventoryList = document.getElementById('inventoryList');
 const emptyState = document.getElementById('emptyState');
 const formTitle = document.getElementById('formTitle');
@@ -80,10 +79,11 @@ const quickAddBtn = document.getElementById('quickAddBtn');
 const quickListBtn = document.getElementById('quickListBtn');
 const quickSalesBtn = document.getElementById('quickSalesBtn');
 const quickTopBtn = document.getElementById('quickTopBtn');
-const categoryChips = [...document.querySelectorAll('.category-chip')];
+const quickCategoryRow = document.getElementById('quickCategoryRow');
 const profitMonthSelect = document.getElementById('profitMonthSelect');
 const toastHost = document.getElementById('toastHost');
 const toastMessage = document.getElementById('toastMessage');
+const DEFAULT_QUICK_CATEGORIES = ['Jellycat', '泡泡玛特', '化妆品', '服饰', '其他'];
 
 function scrollToSection(id, offset = 0) {
   const el = document.getElementById(id);
@@ -269,6 +269,7 @@ function calc(item) {
   const realizedRevenue = itemSales.reduce((sum, sale) => sum + toNumber(sale.revenue), 0);
   const realizedProfit = itemSales.reduce((sum, sale) => sum + toNumber(sale.profit), 0);
   const potentialRevenue = estimatedPrice * remaining;
+  const potentialProfit = (estimatedPrice - costPrice) * remaining;
   const marketValue = estimatedPrice * remaining;
   const remainingCost = costPrice * remaining;
   const profitMargin = costPrice > 0 ? ((estimatedPrice - costPrice) / costPrice) * 100 : 0;
@@ -277,7 +278,7 @@ function calc(item) {
     soldQuantity: safeSold,
     soldFromRecords,
     remaining, totalCost, realizedRevenue,
-    realizedProfit, potentialRevenue, marketValue,
+    realizedProfit, potentialRevenue, potentialProfit, marketValue,
     remainingCost, profitMargin
   };
 }
@@ -306,6 +307,32 @@ function getSalesPageCount(totalCount = getFilteredSaleLogs().length) {
 function getRegisteredCategories() {
   return [...new Set(items.map((item) => String(item.category || '').trim()).filter(Boolean))]
     .sort((a, b) => a.localeCompare(b, 'zh-CN'));
+}
+
+function getQuickCategories(extraLimit = 3) {
+  const counts = new Map();
+  items.forEach((item) => {
+    const category = String(item.category || '').trim();
+    if (!category) return;
+    counts.set(category, (counts.get(category) || 0) + 1);
+  });
+
+  const ranked = [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'zh-CN'))
+    .map(([category]) => category);
+  const extraCategories = ranked
+    .filter((category) => !DEFAULT_QUICK_CATEGORIES.includes(category))
+    .slice(0, extraLimit);
+  return [...extraCategories, ...DEFAULT_QUICK_CATEGORIES];
+}
+
+function renderQuickCategoryChips() {
+  if (!quickCategoryRow) return;
+  const selected = document.getElementById('category')?.value.trim() || '';
+  quickCategoryRow.innerHTML = getQuickCategories().map((category) => {
+    const active = category === selected ? ' active' : '';
+    return `<button type="button" class="category-chip${active}" data-category="${escapeHtml(category)}">${escapeHtml(category)}</button>`;
+  }).join('');
 }
 
 function renderCategoryFilterOptions() {
@@ -389,6 +416,7 @@ function buildFallbackInventorySummary(rows = inventoryPageRows) {
     realized_revenue: realizedRevenue,
     realized_profit: realizedProfit,
     estimated_total_profit: calcRows.reduce((sum, row) => sum + ((row.estimatedPrice - row.costPrice) * row.quantity), 0),
+    remaining_potential_profit: calcRows.reduce((sum, row) => sum + row.potentialProfit, 0),
     remaining_market_value: calcRows.reduce((sum, row) => sum + row.marketValue, 0),
     remaining_sale_value: calcRows.reduce((sum, row) => sum + row.potentialRevenue, 0),
     remaining_cost: calcRows.reduce((sum, row) => sum + row.remainingCost, 0),
@@ -538,6 +566,8 @@ function renderWorkbench() {
   updateProfitMonthSelect();
   const summary = getInventorySummary();
   const period = computePeriodStats();
+  const cumulativeRealizedProfit = saleLogs.reduce((sum, sale) => sum + toNumber(sale.profit), 0);
+  const remainingPotentialProfit = items.reduce((sum, item) => sum + calc(item).potentialProfit, 0);
   const monthLabel = selectedProfitMonth === getMonthKey(new Date())
     ? '本月'
     : formatMonthLabel(selectedProfitMonth);
@@ -597,6 +627,7 @@ function renderWorkbench() {
               ${detailRow('已售数量', `${toNumber(summary.sold_units)} 件`)}
               ${detailRow('低库存', `${lowCount} 个`)}
               ${detailRow('剩余库存估值', money(summary.remaining_market_value))}
+              ${detailRow('预计利润', money(remainingPotentialProfit))}
             </div>
           </div>
           <div class="dashboard-detail-group">
@@ -605,7 +636,7 @@ function renderWorkbench() {
               ${detailRow('今日销售额', money(period.dayRevenue))}
               ${detailRow('今日利润', money(period.dayProfit))}
               ${detailRow(`${monthLabel}销售额`, money(period.monthRevenue))}
-              ${detailRow('累计已实现利润', money(summary.realized_profit))}
+              ${detailRow('累计已实现利润', money(cumulativeRealizedProfit))}
             </div>
           </div>
         </div>
@@ -623,20 +654,26 @@ async function loadInventoryPage({ page = inventoryPage, keepPage = true } = {})
   updatePaginationControls();
 
   try {
-    const [{ data: itemsData, error: itemsError }, { data: salesData, error: salesError }] = await Promise.all([
+    const [
+      { data: itemsData, error: itemsError },
+      { data: salesData, error: salesError },
+      { data: summaryData, error: summaryError }
+    ] = await Promise.all([
       supabaseClient.from(INVENTORY_TABLE).select('*').order('updated_at', { ascending: false }),
-      supabaseClient.from('sales').select('*').order('sold_at', { ascending: false })
+      supabaseClient.from('sales').select('*').order('sold_at', { ascending: false }),
+      supabaseClient.rpc('inventory_summary')
     ]);
 
     if (requestId !== inventoryRequestSeq) return;
     if (itemsError) throw itemsError;
     if (salesError) console.warn(salesError);
+    if (summaryError) console.warn(summaryError);
 
     const allItems = itemsData || [];
     saleLogs = salesData || [];
     items = allItems;
     inventoryMode = 'direct';
-    inventorySummary = buildFallbackInventorySummary(allItems);
+    inventorySummary = summaryData?.[0] || buildFallbackInventorySummary(allItems);
     inventoryLowStock = allItems
       .map((item) => ({ item, c: calc(item) }))
       .filter((x) => x.c.remaining > 0 && x.c.remaining <= 3)
@@ -788,6 +825,7 @@ function renderInventoryList() {
             <div class="mini"><div class="k">进货数量</div><div class="v">${c.quantity}</div></div>
             <div class="mini"><div class="k">总成本</div><div class="v">${money(c.totalCost)}</div></div>
             <div class="mini"><div class="k">已实现利润</div><div class="v ${c.realizedProfit >= 0 ? 'money pos' : 'money neg'}">${money(c.realizedProfit)}</div></div>
+            <div class="mini"><div class="k">预计利润</div><div class="v ${c.potentialProfit >= 0 ? 'money pos' : 'money neg'}">${money(c.potentialProfit)}</div></div>
             <div class="mini"><div class="k">利润率</div><div class="v">${percent(c.profitMargin)}</div></div>
           </div>
           ${detailHtml ? `<div class="inventory-note-list">${detailHtml}</div>` : ''}
@@ -807,101 +845,50 @@ function renderInventoryList() {
   updatePaginationControls();
 }
 
-function renderLegacyInventory() {
-  if (!tableBody && !mobileList) return;
-  const keyword = normalizeSearchTerm(searchInput.value);
+function renderInventoryTable() {
+  if (!tableBody) return;
   const list = inventoryPageRows;
-
-  if (tableBody) {
-    tableBody.innerHTML = list.map((item) => {
-      const c = calc(item);
-      return `
-        <tr>
-          <td>
-            <div class="table-item-name">${escapeHtml(item.name)}</div>
-            <div class="table-item-sub">${escapeHtml(item.supplier || '-')} · ${escapeHtml(item.location || '-')}</div>
-          </td>
-          <td>${escapeHtml(item.category || '-')}</td>
-          <td>${escapeHtml(item.sku || '-')}</td>
-          <td class="num">${money(c.costPrice)}</td>
-          <td class="num">${moneyOrPending(c.estimatedPrice)}</td>
-          <td class="num">${moneyOrPending(c.estimatedPrice)}</td>
-          <td class="num">${c.quantity}</td>
-          <td class="num">${c.soldQuantity}</td>
-          <td class="num">${c.remaining}<br>${stockTag(c.remaining)}</td>
-          <td class="num">${money(c.totalCost)}</td>
-          <td class="num money ${c.realizedProfit >= 0 ? 'pos' : 'neg'}">${money(c.realizedProfit)}</td>
-          <td class="num">${percent(c.profitMargin)}</td>
-          <td><div class="table-note">${escapeHtml(item.note || '-')}</div></td>
-          <td class="actions-col">
-            <div class="table-actions">
-              <button class="primary" onclick="sellItem('${item.id}')">登记卖出</button>
-              <button class="secondary" onclick="editItem('${item.id}')">编辑商品</button>
-              <button class="danger" onclick="deleteItem('${item.id}')">删除</button>
-            </div>
-          </td>
-        </tr>
-      `;
-    }).join('');
-  }
-
-  if (mobileList) {
-    mobileList.innerHTML = list.map((item) => {
-      const c = calc(item);
-      const lowClass = c.remaining > 0 && c.remaining <= 3 ? 'low' : '';
-      return `
-        <div class="mobile-item">
-          <div class="mobile-item-header">
-            <div>
-              <h3>${highlightKeyword(item.name, keyword)}</h3>
-              <div class="mobile-item-sub">${highlightKeyword(item.category || '未分类', keyword)} · ${highlightKeyword(item.sku || '无 SKU', keyword)}</div>
-            </div>
-            <div class="inventory-side">
-              <div class="mobile-item-price">${moneyOrPending(c.estimatedPrice)}</div>
-              <div class="mobile-item-sub">预估售价</div>
-            </div>
-          </div>
-          <div class="mobile-stock-banner ${lowClass}">
-            <div>
-              <div class="mobile-item-sub">剩余库存</div>
-              <div class="big">${c.remaining}</div>
-            </div>
-            <div>${stockTag(c.remaining)}</div>
-          </div>
-          <div class="mobile-meta">
-            <div class="mini"><div class="k">分类</div><div class="v">${escapeHtml(item.category || '-')}</div></div>
-            <div class="mini"><div class="k">SKU</div><div class="v">${escapeHtml(item.sku || '-')}</div></div>
-            <div class="mini"><div class="k">进价</div><div class="v">${money(c.costPrice)}</div></div>
-            <div class="mini"><div class="k">预估售价</div><div class="v">${moneyOrPending(c.estimatedPrice)}</div></div>
-            <div class="mini"><div class="k">进货数量</div><div class="v">${c.quantity}</div></div>
-            <div class="mini"><div class="k">已售 / 剩余</div><div class="v">${c.soldQuantity} / ${c.remaining}</div></div>
-            <div class="mini"><div class="k">总成本</div><div class="v">${money(c.totalCost)}</div></div>
-            <div class="mini"><div class="k">已实现利润</div><div class="v ${c.realizedProfit >= 0 ? 'money pos' : 'money neg'}">${money(c.realizedProfit)}</div></div>
-          </div>
-          <div class="inventory-note-list">
-            供货渠道：${highlightKeyword(item.supplier || '-', keyword)}<br>
-            存放位置：${highlightKeyword(item.location || '-', keyword)}<br>
-            备注：${highlightKeyword(item.note || '-', keyword)}
-          </div>
-          <div class="actions">
+  tableBody.innerHTML = list.map((item) => {
+    const c = calc(item);
+    return `
+      <tr>
+        <td>
+          <div class="table-item-name">${escapeHtml(item.name)}</div>
+          <div class="table-item-sub">${escapeHtml(item.supplier || '-')} · ${escapeHtml(item.location || '-')}</div>
+        </td>
+        <td>${escapeHtml(item.category || '-')}</td>
+        <td>${escapeHtml(item.sku || '-')}</td>
+        <td class="num">${money(c.costPrice)}</td>
+        <td class="num">${moneyOrPending(c.estimatedPrice)}</td>
+        <td class="num">${c.quantity}</td>
+        <td class="num">${c.soldQuantity}</td>
+        <td class="num">${c.remaining}<br>${stockTag(c.remaining)}</td>
+        <td class="num">${money(c.totalCost)}</td>
+        <td class="num money ${c.realizedProfit >= 0 ? 'pos' : 'neg'}">${money(c.realizedProfit)}</td>
+        <td class="num money ${c.potentialProfit >= 0 ? 'pos' : 'neg'}">${money(c.potentialProfit)}</td>
+        <td class="num">${percent(c.profitMargin)}</td>
+        <td><div class="table-note">${escapeHtml(item.note || '-')}</div></td>
+        <td class="actions-col">
+          <div class="table-actions">
             <button class="primary" onclick="sellItem('${item.id}')">登记卖出</button>
             <button class="secondary" onclick="editItem('${item.id}')">编辑商品</button>
             <button class="danger" onclick="deleteItem('${item.id}')">删除</button>
           </div>
-        </div>
-      `;
-    }).join('');
-  }
+        </td>
+      </tr>
+    `;
+  }).join('');
 }
 
 function render() {
   updateSearchClearButton();
   renderCategoryFilterOptions();
+  renderQuickCategoryChips();
   renderSearchMeta();
   renderWorkbench();
   renderSaleRecords();
   renderInventoryList();
-  renderLegacyInventory();
+  renderInventoryTable();
 }
 
 function renderSaleRecords() {
@@ -1081,7 +1068,9 @@ function setSaleSubmitting(active) {
 }
 
 function setActiveCategoryChip(value = '') {
-  categoryChips.forEach((chip) => chip.classList.toggle('active', chip.dataset.category === value));
+  document.querySelectorAll('.category-chip').forEach((chip) => {
+    chip.classList.toggle('active', chip.dataset.category === value);
+  });
 }
 
 function flashNameField() {
@@ -1346,7 +1335,7 @@ function exportCSV() {
       return;
     }
     const rows = [[
-      '商品名称','分类','SKU','供货渠道','进价','预估售价','进货数量','已售数量','剩余库存','总成本','已实现利润','预估利润率','存放位置','备注','更新时间'
+      '商品名称','分类','SKU','供货渠道','进价','预估售价','进货数量','已售数量','剩余库存','总成本','已实现利润','预计利润','预估利润率','存放位置','备注','更新时间'
     ]];
     allItems.forEach(item => {
       const c = calc(item);
@@ -1354,7 +1343,7 @@ function exportCSV() {
         item.name, item.category, item.sku, item.supplier,
         c.costPrice, c.estimatedPrice,
         c.quantity, c.soldQuantity, c.remaining,
-        c.totalCost, c.realizedProfit, c.profitMargin,
+        c.totalCost, c.realizedProfit, c.potentialProfit, c.profitMargin,
         item.location, item.note, item.updated_at || ''
       ]);
     });
@@ -1761,13 +1750,15 @@ window.editSaleRecordTime = function(id) {
   updateSaleRecordTime(id);
 }
 
-categoryChips.forEach((chip) => {
-  chip.addEventListener('click', () => {
+if (quickCategoryRow) {
+  quickCategoryRow.addEventListener('click', (event) => {
+    const chip = event.target.closest('.category-chip');
+    if (!chip) return;
     const categoryInput = document.getElementById('category');
     categoryInput.value = chip.dataset.category || '';
     setActiveCategoryChip(chip.dataset.category || '');
   });
-});
+}
 
 if (quickAddBtn) quickAddBtn.addEventListener('click', () => scrollToSection('formSection'));
 if (quickListBtn) quickListBtn.addEventListener('click', () => scrollToAnchoredSection('listSection'));
@@ -1786,6 +1777,7 @@ if (workbenchGrid) workbenchGrid.addEventListener('click', (event) => {
 });
 
 applyQuickEntryMode();
+renderQuickCategoryChips();
 updateSearchClearButton();
 refreshInventory({ resetPage: true });
 
