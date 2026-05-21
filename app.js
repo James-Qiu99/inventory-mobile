@@ -982,24 +982,14 @@ function renderSaleRecords() {
 async function removeSaleRecord(id) {
   const sale = saleLogs.find((row) => row.id === id);
   if (!sale) return;
-  const item = items.find((row) => row.id === sale.item_id);
   if (!confirm(`二次确认：确定删除卖出记录「${sale.item_name || '未命名商品'}」吗？\n删除后会恢复 ${toNumber(sale.quantity)} 件库存。`)) return;
 
-  if (item) {
-    const nextSoldQuantity = Math.max(0, Math.floor(toNumber(item.sold_quantity) - toNumber(sale.quantity)));
-    const { error: itemError } = await supabaseClient
-      .from('items')
-      .update({ sold_quantity: nextSoldQuantity, updated_at: new Date().toISOString() })
-      .eq('id', item.id);
-    if (itemError) {
-      alert('恢复库存失败：' + itemError.message);
-      return;
-    }
-  }
+  const { error } = await supabaseClient.rpc('delete_sale_record', {
+    p_sale_id: id
+  });
 
-  const { error: saleError } = await supabaseClient.from('sales').delete().eq('id', id);
-  if (saleError) {
-    alert('删除卖出记录失败：' + saleError.message);
+  if (error) {
+    alert('删除卖出记录失败：' + error.message);
     return;
   }
 
@@ -1681,49 +1671,16 @@ saleForm.addEventListener('submit', async (e) => {
 
   setSaleSubmitting(true);
   try {
-    const nextSoldQuantity = toNumber(item.sold_quantity) + saleQty;
-    const updatedItem = {
-      sold_quantity: nextSoldQuantity,
-      updated_at: new Date().toISOString(),
-      note: saleNote ? `${item.note ? item.note + '\n' : ''}[卖出 ${saleQty} 件 @ ${salePrice}] ${saleNote}` : item.note
-    };
+    const { error } = await supabaseClient.rpc('register_sale', {
+      p_item_id: item.id,
+      p_qty: saleQty,
+      p_sale_price: salePrice,
+      p_sold_at: soldAt,
+      p_note: saleNote
+    });
 
-    const { error: itemError } = await supabaseClient.from('items').update(updatedItem).eq('id', item.id);
-    if (itemError) {
-      alert('更新库存失败：' + itemError.message);
-      return;
-    }
-
-    const saleRecord = {
-      id: crypto.randomUUID(),
-      item_id: item.id,
-      item_name: item.name,
-      quantity: saleQty,
-      sale_price: salePrice,
-      cost_price: toNumber(item.cost_price),
-      revenue: salePrice * saleQty,
-      profit: (salePrice - toNumber(item.cost_price)) * saleQty,
-      note: saleNote,
-      sold_at: soldAt
-    };
-
-    const { error: saleError } = await supabaseClient.from('sales').insert(saleRecord);
-    if (saleError) {
-      const { error: rollbackError } = await supabaseClient
-        .from('items')
-        .update({
-          sold_quantity: toNumber(item.sold_quantity),
-          note: item.note || '',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', item.id);
-      if (rollbackError) {
-        alert('保存卖出记录失败，且库存回滚失败：' + rollbackError.message);
-        await refreshInventory();
-        return;
-      }
-      alert('保存卖出记录失败：' + saleError.message);
-      await refreshInventory();
+    if (error) {
+      alert('登记卖出失败：' + error.message);
       return;
     }
 

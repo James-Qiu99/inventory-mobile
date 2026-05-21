@@ -18,7 +18,7 @@ create table if not exists public.items (
 
 create table if not exists public.sales (
   id uuid primary key default gen_random_uuid(),
-  item_id uuid not null references public.items(id) on delete cascade,
+  item_id uuid references public.items(id) on delete set null,
   item_name text not null,
   quantity integer not null default 1,
   sale_price numeric(12,2) not null default 0,
@@ -105,3 +105,129 @@ for all
 to anon, authenticated
 using (true)
 with check (true);
+
+-- 1. 登记卖出的原子函数
+create or replace function public.register_sale(
+  p_item_id uuid,
+  p_qty integer,
+  p_sale_price numeric,
+  p_sold_at timestamptz,
+  p_note text
+)
+returns void
+language plpgsql
+security definer
+as $$
+declare
+  v_cost_price numeric;
+  v_item_name text;
+  v_current_sold integer;
+  v_total_qty integer;
+begin
+  -- 1.1 获取商品当前信息并锁定行，防止高并发下超卖
+  select name, cost_price, sold_quantity, quantity
+  into v_item_name, v_cost_price, v_current_sold, v_total_qty
+  from public.items
+  where id = p_item_id
+  for update;
+
+  if not found then
+    raise exception '商品不存在。';
+  end if;
+
+  -- 1.2 校验参数合法性
+  if p_qty <= 0 then
+    raise exception '销售数量必须大于 0。';
+  end if;
+
+  if p_sale_price < 0 then
+    raise exception '销售单价不能为负数。';
+  end if;
+
+  -- 1.3 校验库存是否足够
+  if (v_total_qty - v_current_sold) < p_qty then
+    raise exception '剩余库存不足，当前剩余 % 件。', (v_total_qty - v_current_sold);
+  end if;
+
+  -- 1.3 更新商品信息（更新 sold_quantity 和 note）
+  update public.items
+  set 
+    sold_quantity = sold_quantity + p_qty,
+    updated_at = now(),
+    note = case 
+      when p_note <> '' then 
+        coalesce(note || chr(10), '') || '[卖出 ' || p_qty || ' 件 @ ' || p_sale_price || '] ' || p_note
+      else note
+    end
+  where id = p_item_id;
+
+  -- 1.4 写入 sales 表
+  insert into public.sales (
+    id,
+    item_id,
+    item_name,
+    quantity,
+    sale_price,
+    cost_price,
+    revenue,
+    profit,
+    note,
+    sold_at
+  ) values (
+    gen_random_uuid(),
+    p_item_id,
+    v_item_name,
+    p_qty,
+    p_sale_price,
+    v_cost_price,
+    (p_sale_price * p_qty),
+    ((p_sale_price - v_cost_price) * p_qty),
+    p_note,
+    p_sold_at
+  );
+end;
+$$;
+
+-- 2. 删除卖出记录并自动恢复库存的原子函数
+create or replace function public.delete_sale_record(
+  p_sale_id uuid
+)
+returns void
+language plpgsql
+security definer
+as $$
+declare
+  v_item_id uuid;
+  v_qty integer;
+  v_item_exists boolean;
+begin
+  -- 2.1 获取并锁定销售记录
+  select item_id, quantity
+  into v_item_id, v_qty
+  from public.sales
+  where id = p_sale_id
+  for update;
+
+  if not found then
+    raise exception '该销售记录已不存在。';
+  end if;
+
+  -- 2.2 校验关联商品是否还存在，存在则回退商品中的已售件数
+  select exists(select 1 from public.items where id = v_item_id) into v_item_exists;
+  if v_item_exists then
+    update public.items
+    set 
+      sold_quantity = greatest(0, sold_quantity - v_qty),
+      updated_at = now()
+    where id = v_item_id;
+  end if;
+
+  -- 2.3 删除销售记录
+  delete from public.sales where id = p_sale_id;
+end;
+$$;
+
+-- 3. 授权公共执行权限
+grant execute on function public.register_sale(uuid, integer, numeric, timestamptz, text) to anon, authenticated;
+grant execute on function public.delete_sale_record(uuid) to anon, authenticated;
+
