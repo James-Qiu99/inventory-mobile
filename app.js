@@ -147,7 +147,13 @@ function unlockPageScroll() {
   document.body.style.left = '';
   document.body.style.right = '';
   document.body.style.width = '';
+  
+  // Temporarily override smooth scroll to auto for instant restoration
+  const originalScrollBehavior = document.documentElement.style.scrollBehavior;
+  document.documentElement.style.scrollBehavior = 'auto';
   window.scrollTo(0, lockedScrollY);
+  document.documentElement.style.scrollBehavior = originalScrollBehavior;
+  
   setQuickActionsVisibilityByInput();
 }
 
@@ -173,6 +179,10 @@ let saleSubmitting = false;
 let editSubmitting = false;
 let editingSaleTimeId = null;
 let saleTimeEditSubmitting = false;
+let isProgrammaticScrolling = false;
+let scrollTimeout = null;
+let isFocusingInput = false;
+let focusScrollTimeout = null;
 
 function toNumber(value) {
   const n = Number(value);
@@ -1814,6 +1824,18 @@ document.querySelectorAll('.floating-tab-bar .tab-item').forEach((item) => {
     e.preventDefault();
     const targetId = item.dataset.tabNav;
     if (targetId) {
+      // 1. Immediately highlight the clicked item to prevent jumping
+      document.querySelectorAll('.floating-tab-bar .tab-item').forEach(nav => {
+        nav.classList.toggle('active', nav === item);
+      });
+
+      // 2. Lock IntersectionObserver updates
+      isProgrammaticScrolling = true;
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        isProgrammaticScrolling = false;
+      }, 800);
+
       if (targetId === 'dashboardSection') {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
@@ -1841,6 +1863,9 @@ function initScrollObserver() {
   };
   
   const observer = new IntersectionObserver((entries) => {
+    // If scrolling programmatically, ignore IntersectionObserver updates
+    if (isProgrammaticScrolling) return;
+
     entries.forEach((entry) => {
       if (entry.isIntersecting) {
         const id = entry.target.id;
@@ -1934,7 +1959,16 @@ updateSearchClearButton();
 refreshInventory({ resetPage: true });
 
 document.addEventListener('focusin', (e) => {
-  if (isEditableTarget(e.target)) setQuickActionsVisibilityByInput(true);
+  if (isEditableTarget(e.target)) {
+    setQuickActionsVisibilityByInput(true);
+    
+    // Protect input focus during browser's native auto-scroll-into-view
+    isFocusingInput = true;
+    clearTimeout(focusScrollTimeout);
+    focusScrollTimeout = setTimeout(() => {
+      isFocusingInput = false;
+    }, 500);
+  }
 });
 
 document.addEventListener('focusout', () => {
@@ -1944,12 +1978,8 @@ document.addEventListener('focusout', () => {
   }, 80);
 });
 
-window.addEventListener('resize', () => {
-  const active = document.activeElement;
-  setQuickActionsVisibilityByInput(isEditableTarget(active));
-});
-
 window.addEventListener('scroll', () => {
+  if (isFocusingInput) return;
   const active = document.activeElement;
   if (isEditableTarget(active)) {
     active.blur();
