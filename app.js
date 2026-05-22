@@ -14,8 +14,9 @@ const submitBtn = document.getElementById('submitBtn');
 const resetBtn = document.getElementById('resetBtn');
 const saveAndNextBtn = document.getElementById('saveAndNextBtn');
 const quickEntryMode = document.getElementById('quickEntryMode');
-const extraFieldsBlock = document.getElementById('extraFieldsBlock');
-const primaryFieldsBlock = document.getElementById('primaryFieldsBlock');
+const extraFieldsPane = document.getElementById('extraFieldsPane');
+const primaryFieldsPane = document.getElementById('primaryFieldsPane');
+const floatingTabBar = document.getElementById('floatingTabBar');
 const searchInput = document.getElementById('searchInput');
 const stockFilter = document.getElementById('stockFilter');
 const categoryFilter = document.getElementById('categoryFilter');
@@ -73,11 +74,6 @@ const firstSalesPageBtn = document.getElementById('firstSalesPageBtn');
 const prevSalesPageBtn = document.getElementById('prevSalesPageBtn');
 const nextSalesPageBtn = document.getElementById('nextSalesPageBtn');
 const lastSalesPageBtn = document.getElementById('lastSalesPageBtn');
-const quickActions = document.querySelector('.quick-actions');
-const quickAddBtn = document.getElementById('quickAddBtn');
-const quickListBtn = document.getElementById('quickListBtn');
-const quickSalesBtn = document.getElementById('quickSalesBtn');
-const quickTopBtn = document.getElementById('quickTopBtn');
 const quickCategoryRow = document.getElementById('quickCategoryRow');
 const profitMonthSelect = document.getElementById('profitMonthSelect');
 const toastHost = document.getElementById('toastHost');
@@ -102,8 +98,8 @@ function scrollToAnchoredSection(id, extra = 14) {
 }
 
 function setQuickActionsVisibilityByInput(active) {
-  if (!quickActions) return;
-  quickActions.classList.toggle('hidden-by-input', !!active);
+  if (!floatingTabBar) return;
+  floatingTabBar.classList.toggle('hidden-by-input', !!active);
 }
 
 function showToast(message) {
@@ -167,6 +163,7 @@ let inventoryReloadTimer = null;
 let inventoryMode = 'server';
 let salesPage = 1;
 let selectedProfitMonth = getMonthKey(new Date());
+let currentPeriod = 'today';
 let saleSubmitting = false;
 let editSubmitting = false;
 let editingSaleTimeId = null;
@@ -175,6 +172,17 @@ let saleTimeEditSubmitting = false;
 function toNumber(value) {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
+}
+
+function generateUUID() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
 }
 
 function money(n) {
@@ -564,12 +572,28 @@ function renderWorkbench() {
   if (!workbenchGrid) return;
   updateProfitMonthSelect();
   const summary = getInventorySummary();
-  const period = computePeriodStats();
-  const cumulativeRealizedProfit = saleLogs.reduce((sum, sale) => sum + toNumber(sale.profit), 0);
+  const periodData = computePeriodStatsEx(currentPeriod);
+  
+  const todayStats = computePeriodStatsEx('today');
+  const monthStats = computePeriodStatsEx('month');
+  const yearStats = computePeriodStatsEx('year');
+  const allStats = computePeriodStatsEx('all');
+  
+  const cumulativeRealizedProfit = allStats.profit;
   const remainingPotentialProfit = items.reduce((sum, item) => sum + calc(item).potentialProfit, 0);
+  
   const monthLabel = selectedProfitMonth === getMonthKey(new Date())
     ? '本月'
     : formatMonthLabel(selectedProfitMonth);
+    
+  const labelMap = {
+    today: '今日',
+    month: monthLabel,
+    year: '今年',
+    all: '累计'
+  };
+  const periodLabel = labelMap[currentPeriod] || '统计';
+  
   const lowCount = toNumber(summary.low_stock_count);
   const metric = (label, value, strong = false) => `
     <div class="dashboard-metric ${strong ? 'strong' : ''}">
@@ -583,29 +607,18 @@ function renderWorkbench() {
     <div class="dashboard-board">
       <div class="dashboard-group">
         <div class="dashboard-group-head">
-          <span>今日</span>
+          <span>${periodLabel}业绩</span>
         </div>
         <div class="dashboard-metrics">
-          ${metric('利润', moneyShort(period.dayProfit), true)}
-          ${metric('销售额', moneyShort(period.dayRevenue))}
-          ${metric('卖出', `${period.dayQty} 件`)}
+          ${metric('利润', moneyShort(periodData.profit), true)}
+          ${metric('销售额', moneyShort(periodData.revenue))}
+          ${metric('卖出', `${periodData.qty} 件`)}
         </div>
       </div>
 
       <div class="dashboard-group">
         <div class="dashboard-group-head">
-          <span>${monthLabel}</span>
-        </div>
-        <div class="dashboard-metrics">
-          ${metric('利润', moneyShort(period.monthProfit), true)}
-          ${metric('销售额', moneyShort(period.monthRevenue))}
-          ${metric('卖出', `${period.monthQty} 件`)}
-        </div>
-      </div>
-
-      <div class="dashboard-group">
-        <div class="dashboard-group-head">
-          <span>当前库存</span>
+          <span>实时库存</span>
         </div>
         <div class="dashboard-metrics">
           ${metric('剩余库存', `${toNumber(summary.remaining_units)} 件`, true)}
@@ -632,10 +645,10 @@ function renderWorkbench() {
           <div class="dashboard-detail-group">
             <div class="dashboard-detail-title">销售明细</div>
             <div class="dashboard-detail-list">
-              ${detailRow('今日销售额', money(period.dayRevenue))}
-              ${detailRow('今日利润', money(period.dayProfit))}
-              ${detailRow(`${monthLabel}销售额`, money(period.monthRevenue))}
-              ${detailRow('累计已实现利润', money(cumulativeRealizedProfit))}
+              ${detailRow('今日利润 / 销售额', `${money(todayStats.profit)} / ${money(todayStats.revenue)}`)}
+              ${detailRow(`${monthLabel}利润 / 销售额`, `${money(monthStats.profit)} / ${money(monthStats.revenue)}`)}
+              ${detailRow('今年利润 / 销售额', `${money(yearStats.profit)} / ${money(yearStats.revenue)}`)}
+              ${detailRow('累计利润 / 销售额', `${money(allStats.profit)} / ${money(allStats.revenue)}`)}
             </div>
           </div>
         </div>
@@ -744,19 +757,35 @@ function updateProfitMonthSelect() {
   )).join('');
 }
 
-function computePeriodStats(monthKey = selectedProfitMonth) {
-  const {dStart,dEnd} = getTodayMonthRange();
+function computePeriodStatsEx(period, monthKey = selectedProfitMonth) {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const dStart = new Date(y, m, now.getDate(), 0, 0, 0, 0).getTime();
+  const dEnd = new Date(y, m, now.getDate(), 23, 59, 59, 999).getTime();
+  
   const {start: mStart, end: mEnd} = getMonthRange(monthKey);
-  const dayLogs = saleLogs.filter(x => { const t = new Date(x.sold_at).getTime(); return t>=dStart && t<=dEnd; });
-  const monthLogs = saleLogs.filter(x => { const t = new Date(x.sold_at).getTime(); return t>=mStart && t<=mEnd; });
-  const sum = (arr, key) => arr.reduce((a,b)=>a+toNumber(b[key]),0);
+  
+  const yStart = new Date(y, 0, 1, 0, 0, 0, 0).getTime();
+  const yEnd = new Date(y, 11, 31, 23, 59, 59, 999).getTime();
+  
+  let filteredLogs = [];
+  if (period === 'today') {
+    filteredLogs = saleLogs.filter(x => { const t = new Date(x.sold_at).getTime(); return t >= dStart && t <= dEnd; });
+  } else if (period === 'month') {
+    filteredLogs = saleLogs.filter(x => { const t = new Date(x.sold_at).getTime(); return t >= mStart && t <= mEnd; });
+  } else if (period === 'year') {
+    filteredLogs = saleLogs.filter(x => { const t = new Date(x.sold_at).getTime(); return t >= yStart && t <= yEnd; });
+  } else {
+    // 'all'
+    filteredLogs = saleLogs;
+  }
+  
+  const sum = (arr, key) => arr.reduce((a,b) => a + toNumber(b[key]), 0);
   return {
-    dayQty: sum(dayLogs,'quantity'),
-    dayRevenue: sum(dayLogs,'revenue'),
-    dayProfit: sum(dayLogs,'profit'),
-    monthQty: sum(monthLogs,'quantity'),
-    monthRevenue: sum(monthLogs,'revenue'),
-    monthProfit: sum(monthLogs,'profit')
+    qty: sum(filteredLogs, 'quantity'),
+    revenue: sum(filteredLogs, 'revenue'),
+    profit: sum(filteredLogs, 'profit')
   };
 }
 
@@ -784,60 +813,63 @@ function renderInventoryList() {
 
   inventoryList.innerHTML = list.map((item) => {
     const c = calc(item);
-    const lowClass = c.remaining > 0 && c.remaining <= 3 ? 'low' : '';
+    const lowClass = c.remaining > 0 && c.remaining <= 3 ? 'low-stock' : '';
+    const soldOutClass = c.remaining === 0 ? 'sold-out' : '';
+    const soldPercent = c.quantity > 0 ? Math.round((c.soldQuantity / c.quantity) * 100) : 0;
+    const strokeDasharray = 125.66;
+    const strokeDashoffset = strokeDasharray - (soldPercent / 100) * strokeDasharray;
+    
     const noteHtml = item.note
       ? `<div class="inventory-note">备注：${highlightKeyword(item.note, keyword)}</div>`
       : '';
     const detailHtml = [
-      item.supplier ? `<div>供货渠道：${highlightKeyword(item.supplier, keyword)}</div>` : '',
-      item.location ? `<div>存放位置：${highlightKeyword(item.location, keyword)}</div>` : ''
+      item.supplier ? `<div><span>供货渠道：</span><strong>${highlightKeyword(item.supplier, keyword)}</strong></div>` : '',
+      item.location ? `<div><span>存放位置：</span><strong>${highlightKeyword(item.location, keyword)}</strong></div>` : ''
     ].filter(Boolean).join('');
+    
     return `
-      <details class="inventory-item">
-        <summary>
-          <div class="inventory-head">
-            <div class="inventory-name">${highlightKeyword(item.name, keyword)}</div>
-            <div class="inventory-sub">${highlightKeyword(item.category || '未分类', keyword)} · ${highlightKeyword(item.sku || '无 SKU', keyword)}</div>
-          </div>
-          <div class="inventory-side">
-            <div class="inventory-remaining">${c.remaining} 件</div>
-            <div class="inventory-sub">${c.remaining > 0 ? '可售库存' : '已售空'}</div>
-            <div>${stockTag(c.remaining)}</div>
-          </div>
-        </summary>
-        <div class="inventory-quick-row">
-          <div class="inventory-metric"><div class="k">进价</div><div class="v">${money(c.costPrice)}</div></div>
-          <div class="inventory-metric"><div class="k">预估售价</div><div class="v">${moneyOrPending(c.estimatedPrice)}</div></div>
-          <div class="inventory-metric"><div class="k">已售 / 进货</div><div class="v">${c.soldQuantity} / ${c.quantity}</div></div>
-        </div>
-        <div class="inventory-body">
-          <div class="inventory-banner ${lowClass}">
-            <div>
-              <div class="inventory-sub">库存状态</div>
-              <div class="big">${c.soldQuantity} 已售 / ${c.remaining} 剩余</div>
+      <div class="inventory-item ${lowClass} ${soldOutClass}">
+        <div class="inventory-card-top">
+          <div class="inventory-card-info">
+            <h3 class="inventory-name">${highlightKeyword(item.name, keyword)}</h3>
+            <div class="inventory-sub">
+              <span class="tag gray">${highlightKeyword(item.category || '未分类', keyword)}</span>
+              ${item.sku ? `<span class="tag gray" style="margin-left:4px;">${highlightKeyword(item.sku, keyword)}</span>` : ''}
             </div>
-            <div>${stockTag(c.remaining)}</div>
           </div>
-          <div class="inventory-grid">
-            <div class="mini"><div class="k">SKU</div><div class="v">${escapeHtml(item.sku || '-')}</div></div>
-            <div class="mini"><div class="k">分类</div><div class="v">${highlightKeyword(item.category || '-', keyword)}</div></div>
-            <div class="mini"><div class="k">进货数量</div><div class="v">${c.quantity}</div></div>
-            <div class="mini"><div class="k">总成本</div><div class="v">${money(c.totalCost)}</div></div>
-            <div class="mini"><div class="k">已实现利润</div><div class="v ${c.realizedProfit >= 0 ? 'money pos' : 'money neg'}">${money(c.realizedProfit)}</div></div>
-            <div class="mini"><div class="k">预计利润</div><div class="v ${c.potentialProfit >= 0 ? 'money pos' : 'money neg'}">${money(c.potentialProfit)}</div></div>
-            <div class="mini"><div class="k">利润率</div><div class="v">${percent(c.profitMargin)}</div></div>
-          </div>
-          ${detailHtml ? `<div class="inventory-note-list">${detailHtml}</div>` : ''}
-          ${noteHtml}
-          <div class="inventory-primary-action">
-            <button class="primary" onclick="sellItem('${item.id}')">登记卖出</button>
-            <button class="secondary" onclick="editItem('${item.id}')">编辑商品</button>
-          </div>
-          <div class="inventory-danger-zone">
-            <button class="danger" onclick="deleteItem('${item.id}')">删除</button>
+          <div class="inventory-progress-ring ${c.remaining === 0 ? 'sold-out' : (c.remaining <= 3 ? 'low' : '')}">
+            <svg>
+              <circle class="bg-ring" cx="24" cy="24" r="20" />
+              <circle class="fill-ring" cx="24" cy="24" r="20" stroke-dasharray="125.66" stroke-dashoffset="${strokeDashoffset}" />
+            </svg>
+            <span class="ring-text">${soldPercent}%</span>
           </div>
         </div>
-      </details>
+
+        <div class="inventory-item-specs">
+          <div class="inventory-spec-pill">
+            <span class="k">进价</span>
+            <span class="v">${money(c.costPrice)}</span>
+          </div>
+          <div class="inventory-spec-pill">
+            <span class="k">预估售价</span>
+            <span class="v">${moneyOrPending(c.estimatedPrice)}</span>
+          </div>
+          <div class="inventory-spec-pill">
+            <span class="k">剩余 / 进货</span>
+            <span class="v">${c.remaining} / ${c.quantity}</span>
+          </div>
+        </div>
+
+        ${detailHtml ? `<div class="inventory-item-details">${detailHtml}</div>` : ''}
+        ${noteHtml}
+
+        <div class="inventory-card-actions">
+          <button type="button" class="primary" onclick="sellItem('${item.id}')" ${c.remaining === 0 ? 'disabled' : ''}>登记卖出</button>
+          <button type="button" class="secondary" onclick="editItem('${item.id}')">编辑</button>
+          <button type="button" class="danger" onclick="deleteItem('${item.id}')">删除</button>
+        </div>
+      </div>
     `;
   }).join('');
 
@@ -1041,6 +1073,7 @@ function openSaleModal(id) {
   saleNoteInput.value = '';
   saleModal.classList.add('show');
   lockPageScroll();
+  updateSaleModalProfitHighlight();
   if (shouldAutoFocusSaleInput()) {
     setTimeout(() => {
       saleQuantityInput.focus();
@@ -1082,15 +1115,24 @@ function flashNameField() {
   }, 1800);
 }
 
-function applyQuickEntryMode() {
-  if (!quickEntryMode || !extraFieldsBlock) return;
+function switchFormTab(tabName) {
+  document.querySelectorAll('.form-tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tabName);
+  });
+  document.querySelectorAll('.form-tab-pane').forEach(pane => {
+    pane.classList.toggle('active', pane.id === `${tabName}FieldsPane`);
+  });
+}
 
-  if (quickEntryMode.checked) {
-    extraFieldsBlock.removeAttribute('open');
+function applyQuickEntryMode() {
+  const tabNav = document.querySelector('.form-tab-nav');
+  if (quickEntryMode?.checked) {
+    if (tabNav) tabNav.style.display = 'none';
+    switchFormTab('primary');
     if (saveAndNextBtn) saveAndNextBtn.style.display = '';
     if (submitBtn) submitBtn.textContent = '保存商品';
   } else {
-    extraFieldsBlock.setAttribute('open', 'open');
+    if (tabNav) tabNav.style.display = 'flex';
     if (saveAndNextBtn) saveAndNextBtn.style.display = 'none';
     if (submitBtn) submitBtn.textContent = '保存全部信息';
   }
@@ -1113,7 +1155,7 @@ function resetForm() {
     setActiveCategoryChip(previousCategory || '');
     keepFormValuesForNext = false;
     setTimeout(() => {
-      if (primaryFieldsBlock) primaryFieldsBlock.setAttribute('open', 'open');
+      switchFormTab('primary');
       scrollToSection('formSection');
       flashNameField();
       const nameInput = document.getElementById('name');
@@ -1137,7 +1179,7 @@ function resetForm() {
 function getFormData() {
   const marketPrice = toNumber(document.getElementById('marketPrice').value);
   return {
-    id: crypto.randomUUID(),
+    id: generateUUID(),
     name: document.getElementById('name').value.trim(),
     category: document.getElementById('category').value.trim(),
     sku: document.getElementById('sku').value.trim(),
@@ -1747,21 +1789,149 @@ if (quickCategoryRow) {
   });
 }
 
-if (quickAddBtn) quickAddBtn.addEventListener('click', () => scrollToSection('formSection'));
-if (quickListBtn) quickListBtn.addEventListener('click', () => scrollToAnchoredSection('listSection'));
-if (quickSalesBtn) quickSalesBtn.addEventListener('click', () => scrollToAnchoredSection('salesCard'));
-if (quickTopBtn) quickTopBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
-if (workbenchGrid) workbenchGrid.addEventListener('click', (event) => {
-  const lowStockTrigger = event.target.closest('[data-low-stock-filter]');
-  if (lowStockTrigger) {
-    if (stockFilter) stockFilter.value = 'lowStock';
-    refreshInventory({ resetPage: true }).then(() => scrollToAnchoredSection('listSection'));
-    return;
-  }
-  const trigger = event.target.closest('[data-target]');
-  if (!trigger) return;
-  scrollToAnchoredSection(trigger.dataset.target);
+function updateSaleModalProfitHighlight() {
+  const highlightEl = document.getElementById('saleProfitHighlight');
+  if (!highlightEl || !saleItemId) return;
+  const item = items.find(i => i.id === saleItemId);
+  if (!item) return;
+  
+  const saleQty = Math.max(0, Math.floor(toNumber(saleQuantityInput.value)));
+  const salePrice = toNumber(salePriceInput.value || calc(item).estimatedPrice);
+  const costPrice = toNumber(item.cost_price);
+  
+  const profit = (salePrice - costPrice) * saleQty;
+  highlightEl.textContent = `预计可赚利润: ${money(profit)}`;
+}
+
+// Floating tab bar click scroll handler
+document.querySelectorAll('.floating-tab-bar .tab-item').forEach((item) => {
+  item.addEventListener('click', (e) => {
+    e.preventDefault();
+    const targetId = item.dataset.tabNav;
+    if (targetId) {
+      if (targetId === 'dashboardSection') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        scrollToAnchoredSection(targetId);
+      }
+      if (targetId === 'formSection') {
+        setTimeout(() => {
+          const nameInput = document.getElementById('name');
+          if (nameInput) {
+            nameInput.focus();
+            nameInput.select?.();
+          }
+        }, 300);
+      }
+    }
+  });
 });
+
+// Scroll observer to highlight active tab item
+function initScrollObserver() {
+  const sections = [
+    { id: 'dashboardSection' },
+    { id: 'listSection' },
+    { id: 'formSection' },
+    { id: 'salesCard' },
+    { id: 'toolsSection' }
+  ];
+  
+  const navItems = document.querySelectorAll('.floating-tab-bar .tab-item');
+  
+  const observerOptions = {
+    root: null,
+    rootMargin: '-15% 0px -70% 0px',
+    threshold: 0
+  };
+  
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        const id = entry.target.id;
+        navItems.forEach((item) => {
+          const isActive = item.dataset.tabNav === id;
+          item.classList.toggle('active', isActive);
+        });
+      }
+    });
+  }, observerOptions);
+  
+  sections.forEach((s) => {
+    const el = document.getElementById(s.id);
+    if (el) observer.observe(el);
+  });
+}
+
+// Quantity adjust step buttons
+const minusBtn = document.getElementById('saleQtyMinus');
+const plusBtn = document.getElementById('saleQtyPlus');
+
+if (minusBtn && plusBtn) {
+  minusBtn.addEventListener('click', () => {
+    let val = Math.max(1, Math.floor(toNumber(saleQuantityInput.value) - 1));
+    saleQuantityInput.value = String(val);
+    updateSaleModalProfitHighlight();
+  });
+  
+  plusBtn.addEventListener('click', () => {
+    const item = items.find(i => i.id === saleItemId);
+    if (!item) return;
+    const c = calc(item);
+    let val = Math.min(c.remaining, Math.floor(toNumber(saleQuantityInput.value) + 1));
+    saleQuantityInput.value = String(val);
+    updateSaleModalProfitHighlight();
+  });
+}
+
+saleQuantityInput.addEventListener('input', updateSaleModalProfitHighlight);
+salePriceInput.addEventListener('input', updateSaleModalProfitHighlight);
+
+// Form tab click handler
+document.querySelectorAll('.form-tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    switchFormTab(btn.dataset.tab);
+  });
+});
+
+// Period tabs listener
+const periodTabsContainer = document.getElementById('dashboardPeriodTabs');
+if (periodTabsContainer) {
+  periodTabsContainer.addEventListener('click', (e) => {
+    const tabBtn = e.target.closest('.dashboard-period-tab');
+    if (!tabBtn) return;
+    
+    periodTabsContainer.querySelectorAll('.dashboard-period-tab').forEach(btn => {
+      btn.classList.toggle('active', btn === tabBtn);
+    });
+    
+    currentPeriod = tabBtn.dataset.period;
+    
+    const monthSelectWrap = document.getElementById('monthSelectWrap');
+    if (monthSelectWrap) {
+      monthSelectWrap.style.display = currentPeriod === 'month' ? 'flex' : 'none';
+    }
+    
+    renderWorkbench();
+  });
+}
+
+if (workbenchGrid) {
+  workbenchGrid.addEventListener('click', (event) => {
+    const lowStockTrigger = event.target.closest('[data-low-stock-filter]');
+    if (lowStockTrigger) {
+      if (stockFilter) stockFilter.value = 'lowStock';
+      refreshInventory({ resetPage: true }).then(() => scrollToAnchoredSection('listSection'));
+      return;
+    }
+    const trigger = event.target.closest('[data-target]');
+    if (!trigger) return;
+    scrollToAnchoredSection(trigger.dataset.target);
+  });
+}
+
+// Call initScrollObserver
+initScrollObserver();
 
 applyQuickEntryMode();
 renderQuickCategoryChips();
