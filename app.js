@@ -820,9 +820,9 @@ function renderInventoryList() {
     const c = calc(item);
     const lowClass = c.remaining > 0 && c.remaining <= 3 ? 'low-stock' : '';
     const soldOutClass = c.remaining === 0 ? 'sold-out' : '';
-    const soldPercent = c.quantity > 0 ? Math.round((c.soldQuantity / c.quantity) * 100) : 0;
+    const remainingPercent = c.quantity > 0 ? Math.round((c.remaining / c.quantity) * 100) : 0;
     const strokeDasharray = 125.66;
-    const strokeDashoffset = strokeDasharray - (soldPercent / 100) * strokeDasharray;
+    const strokeDashoffset = strokeDasharray - (remainingPercent / 100) * strokeDasharray;
     
     const noteHtml = item.note
       ? `<div class="inventory-note">备注：${highlightKeyword(item.note, keyword)}</div>`
@@ -847,7 +847,7 @@ function renderInventoryList() {
               <circle class="bg-ring" cx="24" cy="24" r="20" />
               <circle class="fill-ring" cx="24" cy="24" r="20" stroke-dasharray="125.66" stroke-dashoffset="${strokeDashoffset}" />
             </svg>
-            <span class="ring-text">${soldPercent}%</span>
+            <span class="ring-text">${remainingPercent}%</span>
           </div>
         </div>
 
