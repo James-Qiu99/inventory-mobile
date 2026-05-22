@@ -1855,6 +1855,7 @@ function initScrollObserver() {
   ];
   
   const navItems = document.querySelectorAll('.floating-tab-bar .tab-item');
+  const intersectingSections = new Set();
   
   const observerOptions = {
     root: null,
@@ -1862,25 +1863,62 @@ function initScrollObserver() {
     threshold: 0
   };
   
+  function highlightTab(activeId) {
+    navItems.forEach((item) => {
+      const isActive = item.dataset.tabNav === activeId;
+      item.classList.toggle('active', isActive);
+    });
+  }
+
+  function updateActiveTab() {
+    // If at the very top of the page, force "看板" (dashboardSection) active
+    if (window.scrollY < 50) {
+      highlightTab('dashboardSection');
+      return;
+    }
+
+    let activeId = null;
+    let minDistance = Infinity;
+    const refOffset = getStickySearchOffset(14);
+
+    intersectingSections.forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const distance = Math.abs(rect.top - refOffset);
+      if (distance < minDistance) {
+        minDistance = distance;
+        activeId = id;
+      }
+    });
+
+    if (activeId) {
+      highlightTab(activeId);
+    }
+  }
+
   const observer = new IntersectionObserver((entries) => {
     // If scrolling programmatically, ignore IntersectionObserver updates
     if (isProgrammaticScrolling) return;
 
     entries.forEach((entry) => {
       if (entry.isIntersecting) {
-        const id = entry.target.id;
-        navItems.forEach((item) => {
-          const isActive = item.dataset.tabNav === id;
-          item.classList.toggle('active', isActive);
-        });
+        intersectingSections.add(entry.target.id);
+      } else {
+        intersectingSections.delete(entry.target.id);
       }
     });
+
+    updateActiveTab();
   }, observerOptions);
   
   sections.forEach((s) => {
     const el = document.getElementById(s.id);
     if (el) observer.observe(el);
   });
+
+  // Call updateActiveTab initially to set correct state
+  updateActiveTab();
 }
 
 // Quantity adjust step buttons
