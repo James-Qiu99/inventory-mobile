@@ -168,7 +168,6 @@ let inventoryPage = 1;
 let inventoryTotalCount = 0;
 let inventoryPageRows = [];
 let inventorySummary = null;
-let inventoryLowStock = [];
 let inventoryRequestSeq = 0;
 let inventoryReloadTimer = null;
 let inventoryMode = 'server';
@@ -508,12 +507,6 @@ async function loadInventoryFallback(reason = 'query_failed') {
   items = allItems;
   inventoryMode = 'fallback';
   inventorySummary = buildFallbackInventorySummary(allItems);
-  inventoryLowStock = allItems
-    .map((item) => ({ item, c: calc(item) }))
-    .filter((x) => x.c.remaining > 0 && x.c.remaining <= 3)
-    .sort((a, b) => a.c.remaining - b.c.remaining)
-    .slice(0, 3)
-    .map(({ item, c }) => ({ id: item.id, name: item.name, remaining: c.remaining }));
   inventoryTotalCount = getFilteredAndSortedItems(allItems).length;
   inventoryPageRows = getFallbackPageRows(allItems, inventoryPage);
 
@@ -609,7 +602,6 @@ function renderWorkbench() {
   };
   const periodLabel = labelMap[currentPeriod] || '统计';
   
-  const lowCount = toNumber(summary.low_stock_count);
   const metric = (label, value, strong = false) => `
     <div class="dashboard-metric ${strong ? 'strong' : ''}">
       <div class="k">${label}</div>
@@ -642,8 +634,6 @@ function renderWorkbench() {
         </div>
       </div>
 
-      ${lowCount ? `<button type="button" class="dashboard-alert" data-low-stock-filter="true">低库存：${lowCount} 个商品需要处理</button>` : ''}
-
       <details class="dashboard-details">
         <summary>展开更多数据</summary>
         <div class="dashboard-detail-body">
@@ -652,7 +642,6 @@ function renderWorkbench() {
             <div class="dashboard-detail-list">
               ${detailRow('进货总数量', `${toNumber(summary.total_units)} 件`)}
               ${detailRow('已售数量', `${toNumber(summary.sold_units)} 件`)}
-              ${detailRow('低库存', `${lowCount} 个`)}
               ${detailRow('剩余库存估值', money(summary.remaining_market_value))}
               ${detailRow('预计利润', money(remainingPotentialProfit))}
             </div>
@@ -701,12 +690,6 @@ async function loadInventoryPage({ page = inventoryPage, keepPage = true } = {})
     items = allItems;
     inventoryMode = 'direct';
     inventorySummary = summaryData?.[0] || buildFallbackInventorySummary(allItems);
-    inventoryLowStock = allItems
-      .map((item) => ({ item, c: calc(item) }))
-      .filter((x) => x.c.remaining > 0 && x.c.remaining <= 3)
-      .sort((a, b) => a.c.remaining - b.c.remaining)
-      .slice(0, 3)
-      .map(({ item, c }) => ({ id: item.id, name: item.name, remaining: c.remaining }));
 
     const filtered = getFilteredAndSortedItems(allItems);
     inventoryTotalCount = filtered.length;
@@ -881,7 +864,7 @@ function renderInventoryList() {
 
         <div class="inventory-card-actions">
           <button type="button" class="primary" onclick="sellItem('${item.id}')" ${c.remaining === 0 ? 'disabled' : ''}>登记卖出</button>
-          <button type="button" class="secondary" onclick="editItem('${item.id}')">编辑</button>
+          <button type="button" class="secondary" onclick="editItem('${item.id}')">编辑商品</button>
           <button type="button" class="danger" onclick="deleteItem('${item.id}')">删除</button>
         </div>
       </div>
@@ -1305,8 +1288,7 @@ function openEditModal(id) {
   setEditSubmitting(false);
   editModalDesc.innerHTML = `
     <strong>${escapeHtml(item.name || '未命名商品')}</strong>
-    当前已售：${c.soldQuantity} 件，剩余：${c.remaining} 件<br>
-    保存后只更新这条库存记录，不修改历史卖出利润。
+    当前已售：${c.soldQuantity} 件，剩余：${c.remaining} 件
   `;
   editNameInput.value = item.name || '';
   editCategoryInput.value = item.category || '';
@@ -1976,12 +1958,6 @@ if (periodTabsContainer) {
 
 if (workbenchGrid) {
   workbenchGrid.addEventListener('click', (event) => {
-    const lowStockTrigger = event.target.closest('[data-low-stock-filter]');
-    if (lowStockTrigger) {
-      if (stockFilter) stockFilter.value = 'lowStock';
-      refreshInventory({ resetPage: true }).then(() => scrollToAnchoredSection('listSection'));
-      return;
-    }
     const trigger = event.target.closest('[data-target]');
     if (!trigger) return;
     scrollToAnchoredSection(trigger.dataset.target);

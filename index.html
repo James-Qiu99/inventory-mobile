@@ -373,22 +373,6 @@
     .dashboard-metric .v { color: var(--text); font-size: 20px; font-weight: 850; line-height: 1.1; word-break: break-word; font-variant-numeric: tabular-nums; }
     .dashboard-metric.strong .v { color: var(--primary-dark); }
     
-    .dashboard-alert {
-      grid-column: 1 / -1;
-      width: 100%;
-      margin-top: 2px;
-      padding: 12px 14px;
-      border-radius: var(--control-radius);
-      border: 1px solid rgba(249, 115, 22, 0.2);
-      background: var(--warn-soft);
-      color: #c2410c;
-      text-align: left;
-      box-shadow: none;
-      font-size: 14px;
-      font-weight: 800;
-      transition: all 0.2s;
-    }
-    .dashboard-alert:active { transform: scale(0.98); }
     
     .dashboard-details {
       border-radius: var(--radius);
@@ -1177,9 +1161,9 @@
     .category-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2); }
     .month-select { min-width: 140px; min-height: 40px; padding: 8px 30px 8px 12px; border-radius: var(--control-radius); font-size: 14px; }
     
-    .quick-entry-switch { margin-top: 10px; padding: 10px 12px; border-radius: var(--radius); background: var(--surface-soft); border: 1px solid var(--line); }
-    .quick-entry-label { display: flex; align-items: center; gap: 8px; color: var(--text); font-weight: 700; font-size: 14px; line-height: 1.3; }
-    .quick-entry-label input { width: auto; min-height: auto; transform: scale(1.05); }
+    .quick-entry-switch { margin-top: 10px; padding: 6px 12px; border-radius: 999px; background: var(--surface-soft); border: 1px solid var(--line); display: inline-flex; align-items: center; }
+    .quick-entry-label { display: flex; align-items: center; gap: 8px; color: var(--text); font-weight: 700; font-size: 13px; line-height: 1; }
+    .quick-entry-label input { width: auto; min-height: auto; transform: scale(1.05); margin: 0; }
     
     .form-steps { border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; background: #fcfcfd; }
     .form-steps summary { cursor: pointer; font-weight: 700; color: var(--text); }
@@ -1495,7 +1479,6 @@
             <input type="checkbox" id="quickEntryMode" checked />
             快速录入模式
           </label>
-          <div class="compact-note">开启后，更适合连续在 iPhone 上快速录货。</div>
         </div>
         <div class="quick-category-row" id="quickCategoryRow"></div>
         <form id="itemForm">
@@ -1563,7 +1546,6 @@
       <div class="section-title-row">
         <div>
           <h2 class="section-title"><span class="section-marker neutral"></span>库存状态</h2>
-          <div class="section-kicker">按状态快速查看商品。</div>
         </div>
       </div>
       <div id="searchResultMeta" class="compact-note search-meta" hidden></div>
@@ -1743,7 +1725,6 @@
       <h3>编辑库存商品</h3>
       <div id="editModalDesc" class="sale-summary">
         <strong>调整当前商品</strong>
-        保存后只更新这条库存记录，不影响历史卖出记录。
       </div>
       <form id="editForm">
         <div class="sale-form-body">
