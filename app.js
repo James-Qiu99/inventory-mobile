@@ -1999,3 +1999,56 @@ window.addEventListener('scroll', () => {
     active.blur();
   }
 }, { passive: true });
+
+function bindSwipeToDismiss(modalEl, closeCallback) {
+  if (!modalEl) return;
+  let startY = 0;
+  let currentY = 0;
+  let isDragging = false;
+  
+  const sheet = modalEl.querySelector('.modal');
+  if (!sheet) return;
+  
+  sheet.addEventListener('touchstart', (e) => {
+    if (window.innerWidth > 900) return;
+    const target = e.target;
+    if (target.closest('input, textarea, select, button, .category-chip')) return;
+    
+    const scrollContainer = target.closest('.sale-form-body');
+    if (scrollContainer && scrollContainer.scrollTop > 0) return;
+    
+    startY = e.touches[0].clientY;
+    currentY = startY;
+    isDragging = true;
+    sheet.style.transition = 'none';
+  }, { passive: true });
+  
+  sheet.addEventListener('touchmove', (e) => {
+    if (!isDragging) return;
+    currentY = e.touches[0].clientY;
+    const deltaY = currentY - startY;
+    if (deltaY > 0) {
+      sheet.style.transform = `translateY(${deltaY}px)`;
+    } else {
+      sheet.style.transform = 'translateY(0)';
+    }
+  }, { passive: true });
+  
+  sheet.addEventListener('touchend', () => {
+    if (!isDragging) return;
+    isDragging = false;
+    sheet.style.transition = 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
+    const deltaY = currentY - startY;
+    if (deltaY > 120) {
+      sheet.style.transform = '';
+      closeCallback();
+    } else {
+      sheet.style.transform = '';
+    }
+  }, { passive: true });
+}
+
+bindSwipeToDismiss(saleModal, closeSaleModal);
+bindSwipeToDismiss(editModal, closeEditModal);
+bindSwipeToDismiss(saleTimeEditModal, closeSaleTimeEditModal);
+
