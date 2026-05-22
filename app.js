@@ -141,6 +141,12 @@ function lockPageScroll() {
 
 function unlockPageScroll() {
   if (!document.body.classList.contains('modal-open')) return;
+  
+  // Blur active element to dismiss keyboards and release focus
+  if (document.activeElement && document.activeElement !== document.body && typeof document.activeElement.blur === 'function') {
+    document.activeElement.blur();
+  }
+
   document.body.classList.remove('modal-open');
   document.body.style.position = '';
   document.body.style.top = '';
@@ -2032,6 +2038,11 @@ function bindSwipeToDismiss(modalEl, closeCallback) {
         e.preventDefault();
       }
       sheet.style.transform = `translateY(${deltaY}px)`;
+      
+      // Dismiss keyboard immediately when swiping down starts
+      if (deltaY > 10 && document.activeElement && document.activeElement !== document.body && typeof document.activeElement.blur === 'function') {
+        document.activeElement.blur();
+      }
     } else {
       sheet.style.transform = 'translateY(0)';
     }
