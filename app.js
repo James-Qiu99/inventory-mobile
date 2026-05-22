@@ -99,7 +99,10 @@ function scrollToAnchoredSection(id, extra = 14) {
 
 function setQuickActionsVisibilityByInput(active) {
   if (!floatingTabBar) return;
-  floatingTabBar.classList.toggle('hidden-by-input', !!active);
+  const isInputFocused = active !== undefined ? !!active : isEditableTarget(document.activeElement);
+  const isAnyModalOpen = document.body.classList.contains('modal-open') || 
+                         !!document.querySelector('.modal-backdrop.show');
+  floatingTabBar.classList.toggle('hidden-by-input', isInputFocused || isAnyModalOpen);
 }
 
 function showToast(message) {
@@ -133,6 +136,7 @@ function lockPageScroll() {
   document.body.style.left = '0';
   document.body.style.right = '0';
   document.body.style.width = '100%';
+  setQuickActionsVisibilityByInput();
 }
 
 function unlockPageScroll() {
@@ -144,6 +148,7 @@ function unlockPageScroll() {
   document.body.style.right = '';
   document.body.style.width = '';
   window.scrollTo(0, lockedScrollY);
+  setQuickActionsVisibilityByInput();
 }
 
 
@@ -1814,15 +1819,6 @@ document.querySelectorAll('.floating-tab-bar .tab-item').forEach((item) => {
       } else {
         scrollToAnchoredSection(targetId);
       }
-      if (targetId === 'formSection') {
-        setTimeout(() => {
-          const nameInput = document.getElementById('name');
-          if (nameInput) {
-            nameInput.focus();
-            nameInput.select?.();
-          }
-        }, 300);
-      }
     }
   });
 });
@@ -1833,8 +1829,7 @@ function initScrollObserver() {
     { id: 'dashboardSection' },
     { id: 'listSection' },
     { id: 'formSection' },
-    { id: 'salesCard' },
-    { id: 'toolsSection' }
+    { id: 'salesCard' }
   ];
   
   const navItems = document.querySelectorAll('.floating-tab-bar .tab-item');
@@ -1953,3 +1948,10 @@ window.addEventListener('resize', () => {
   const active = document.activeElement;
   setQuickActionsVisibilityByInput(isEditableTarget(active));
 });
+
+window.addEventListener('scroll', () => {
+  const active = document.activeElement;
+  if (isEditableTarget(active)) {
+    active.blur();
+  }
+}, { passive: true });
