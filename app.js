@@ -2021,29 +2021,40 @@ function bindSwipeToDismiss(modalEl, closeCallback) {
     currentY = startY;
     isDragging = true;
     sheet.style.transition = 'none';
-  }, { passive: true });
+  }, { passive: false });
   
   sheet.addEventListener('touchmove', (e) => {
     if (!isDragging) return;
     currentY = e.touches[0].clientY;
     const deltaY = currentY - startY;
     if (deltaY > 0) {
+      if (e.cancelable) {
+        e.preventDefault();
+      }
       sheet.style.transform = `translateY(${deltaY}px)`;
     } else {
       sheet.style.transform = 'translateY(0)';
     }
-  }, { passive: true });
+  }, { passive: false });
   
   sheet.addEventListener('touchend', () => {
     if (!isDragging) return;
     isDragging = false;
-    sheet.style.transition = 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
     const deltaY = currentY - startY;
     if (deltaY > 120) {
-      sheet.style.transform = '';
-      closeCallback();
+      sheet.style.transition = 'transform 0.25s ease-out';
+      sheet.style.transform = 'translateY(100%)';
+      setTimeout(() => {
+        closeCallback();
+        sheet.style.transform = '';
+        sheet.style.transition = '';
+      }, 250);
     } else {
+      sheet.style.transition = 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
       sheet.style.transform = '';
+      setTimeout(() => {
+        sheet.style.transition = '';
+      }, 300);
     }
   }, { passive: true });
 }
